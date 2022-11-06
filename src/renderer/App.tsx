@@ -9,10 +9,6 @@ import AuthLayout from './layout/AuthLayout';
 import Sidebar from './layout/sidebar';
 
 const Hello = () => {
-  window.electron.ipcRenderer.once('ipc-example', (arg) => {
-    // eslint-disable-next-line no-console
-    console.log('husnain - arg', arg);
-  });
   return (
     <HStack
       bg={'#F5F5F5'}
@@ -31,6 +27,14 @@ const Hello = () => {
 };
 
 export default function App() {
+  // window.electron.ipcRenderer.once('createNewUserFile', (arg) => {
+  //   // eslint-disable-next-line no-console
+  //   console.log('husnain - arg', arg);
+  // });
+  // window.electron.ipcRenderer.sendMessage('createNewUserFile', {
+  //   username: 'husnain',
+  // });
+
   return (
     <Router>
       <Routes>

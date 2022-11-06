@@ -11,10 +11,11 @@
 import { app, BrowserWindow, ipcMain, shell } from 'electron';
 import log from 'electron-log';
 import { autoUpdater } from 'electron-updater';
+import { ethers } from 'ethers';
+import fs from 'fs';
 import path from 'path';
 import MenuBuilder from './menu';
 import { resolveHtmlPath } from './util';
-
 class AppUpdater {
   constructor() {
     log.transports.file.level = 'info';
@@ -26,9 +27,20 @@ class AppUpdater {
 let mainWindow: BrowserWindow | null = null;
 
 ipcMain.on('ipc-example', async (event, arg) => {
-  const msgTemplate = (pingPong: string) => `IPC test: ${pingPong}`;
-  console.log(msgTemplate(arg));
-  event.reply('ipc-example', msgTemplate('pong'));
+  console.log('ipc-example', arg);
+  event.reply('ipc-example', 'pong');
+});
+
+ipcMain.on('createNewUserFile', async (event, arg: { username: string }) => {
+  const { address, privateKey, publicKey } = ethers.Wallet.createRandom();
+  const data = JSON.stringify({
+    username: arg.username,
+    address,
+    privateKey,
+    publicKey,
+  });
+  fs.writeFileSync('./vallet.json', data);
+  event.reply('createNewUserFile', 'File created');
 });
 
 ipcMain.on('get-data', (event, arg) => {
