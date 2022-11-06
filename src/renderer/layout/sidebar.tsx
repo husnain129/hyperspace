@@ -2,12 +2,12 @@
 /* eslint-disable react/jsx-curly-brace-presence */
 import { Button, Flex, HStack, Image, Text, VStack } from '@chakra-ui/react';
 import { useState } from 'react';
+import { BiRefresh } from 'react-icons/bi';
 import { BsBarChart } from 'react-icons/bs';
-import { HiOutlineArrowNarrowLeft } from 'react-icons/hi';
+import { HiMenuAlt2, HiOutlineArrowNarrowLeft } from 'react-icons/hi';
 import { IoSettingsOutline } from 'react-icons/io5';
 import { TbLayoutDashboard } from 'react-icons/tb';
 import { useNavigate } from 'react-router-dom';
-import hyperspace from '../../../assets/hyperspace.svg';
 
 const Sidebar = () => {
   const navigate = useNavigate();
@@ -18,43 +18,48 @@ const Sidebar = () => {
   });
   return (
     <VStack
-      w="25%"
+      w="30%"
       h="full"
-      bg="white"
-      shadow="lg"
-      borderRadius={'lg'}
+      borderRight="1px solid #F2F2F2"
       justifyContent="space-between"
       alignItems="center"
+      px="1.5em"
       py="2em"
-      px="1em"
     >
       <VStack
         w="full"
         h="full"
-        gap={'5em'}
+        gap={'2em'}
         alignItems="flex-start"
         justifyContent="flex-start"
       >
-        <HStack>
-          <Image src={hyperspace} alt="logo" w="3em" h="3em" />
-          <Flex
-            flexDir={'column'}
-            justifyContent="flex-start"
-            alignItems="flex-start"
-          >
-            <Text fontWeight={'semibold'}>
-              HYPER<span style={{ color: '#7D7D7D' }}>SPACE</span>
+        <Flex gap=".8em" alignItems={'center'}>
+          <Image
+            src="https://i.ebayimg.com/images/g/w9kAAOSwZp5fIhxW/s-l800.jpg"
+            borderRadius="full"
+            w="3.2em"
+            h="3.2em"
+            alt="user"
+            objectFit="cover"
+          />
+          <Flex flexDir={'column'} alignItems="flex-start">
+            <Text color="#494949" fontSize=".8em" fontWeight="semibold">
+              Humayun Javed
             </Text>
-            <Text mt="-6px" fontSize={'.75em'}>
-              Storage Node
-            </Text>
+            <Flex gap=".2em" color="#494949">
+              <HiMenuAlt2 color="#494949" />
+              <Text fontSize=".7em" color="#494949">
+                3.2
+              </Text>
+              <BiRefresh color="#494949" />
+            </Flex>
           </Flex>
-        </HStack>
+        </Flex>
         <Flex flexDir={'column'} gap=".2em" w="100%">
           <HStack
             {...selectedStyle(0)}
             w="full"
-            h="3em"
+            h="2.8em"
             borderRadius={'md'}
             cursor={'pointer'}
             _hover={{
@@ -73,7 +78,7 @@ const Sidebar = () => {
           <HStack
             {...selectedStyle(1)}
             w="full"
-            h="3em"
+            h="2.8em"
             borderRadius={'md'}
             cursor={'pointer'}
             _hover={{
@@ -91,7 +96,7 @@ const Sidebar = () => {
           <HStack
             {...selectedStyle(2)}
             w="full"
-            h="3em"
+            h="2.8em"
             borderRadius={'md'}
             cursor={'pointer'}
             _hover={{
