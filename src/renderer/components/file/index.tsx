@@ -11,7 +11,7 @@ import {
   Thead,
   Tr,
 } from '@chakra-ui/react';
-import { BiDownload } from 'react-icons/bi';
+import { BiDownload, BiTrash, BiTrashAlt } from 'react-icons/bi';
 import { BsFillFileEarmarkZipFill } from 'react-icons/bs';
 
 const FileTableData = () => {
@@ -19,33 +19,50 @@ const FileTableData = () => {
     <Tr>
       <Td>
         <HStack>
-          <BsFillFileEarmarkZipFill size="1.2em" />
-          <Text fontSize=".9em" fontWeight="semibold" color="#616161">
+          <BsFillFileEarmarkZipFill size="1.2em" color="#616161" />
+          <Text fontSize=".85em" fontWeight="semibold" color="#616161">
             Fyp Docs.zip
           </Text>
         </HStack>
       </Td>
       <Td>
-        <Text fontSize=".9em" color="#949494">
+        <Text fontSize=".85em" color="#949494" fontWeight="500">
           14 KB
         </Text>
       </Td>
       <Td>
-        <Text fontSize=".9em" color="#949494">
-          Aug 25, 2025
+        <Text fontSize=".85em" color="#949494" fontWeight="500">
+          Aug 25, 2022
         </Text>
       </Td>
       <Td>
-        <Text fontSize=".9em" color="#949494">
-          Aug 27, 2025
+        <Text fontSize=".85em" color="#949494" fontWeight="500">
+          Aug 27, 2022
         </Text>
       </Td>
       <Td>
-        <IconButton
-          aria-label="download"
-          colorScheme="primary"
-          children={<BiDownload />}
-        />
+        <HStack>
+          <IconButton
+            aria-label="download"
+            colorScheme="gray"
+            borderRadius="full"
+            border="1px solid"
+            size="sm"
+            borderColor="gray.300"
+            variant="ghost"
+            children={<BiDownload />}
+          />
+          <IconButton
+            aria-label="delete"
+            colorScheme="gray"
+            borderRadius="full"
+            border="1px solid"
+            size="sm"
+            borderColor="gray.300"
+            variant="ghost"
+            children={<BiTrash />}
+          />
+        </HStack>
       </Td>
     </Tr>
   );
@@ -64,11 +81,21 @@ const FileContainer = () => {
         <Table variant="simple">
           <Thead w="full">
             <Tr>
-              <Th>Name</Th>
-              <Th>File Size</Th>
-              <Th>Upload On</Th>
-              <Th>Last Verfied</Th>
-              <Th>Actions</Th>
+              <Th textTransform="none" color="gray.500">
+                Name
+              </Th>
+              <Th textTransform="none" color="gray.500">
+                File Size
+              </Th>
+              <Th textTransform="none" color="gray.500">
+                Upload On
+              </Th>
+              <Th textTransform="none" color="gray.500">
+                Last Verified
+              </Th>
+              <Th textTransform="none" color="gray.500">
+                Actions
+              </Th>
             </Tr>
           </Thead>
           <Tbody>

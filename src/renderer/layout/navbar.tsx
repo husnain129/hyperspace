@@ -1,4 +1,12 @@
-import { Button, Center, Flex, HStack, Image, Text } from '@chakra-ui/react';
+import {
+  Button,
+  Center,
+  Flex,
+  HStack,
+  IconButton,
+  Image,
+  Text,
+} from '@chakra-ui/react';
 import { useState } from 'react';
 import { FiUpload } from 'react-icons/fi';
 import { TbDownload } from 'react-icons/tb';
@@ -11,24 +19,28 @@ const Navbar = () => {
   return (
     <HStack
       w="100vw"
-      h="11vh"
+      h="65px"
       borderBottom="1px solid #F2F2F2 "
       alignItems="center"
-      px="1.5em"
+      px="2em"
       justifyContent="space-between"
     >
       <Flex gap=".4em" justifyContent="center" alignItems="center">
-        <Image src={hyperspace} alt="logo" w="2.5em" h="2.5em" />
-        <Text fontWeight="semibold">
-          HYPER<span style={{ color: '#7D7D7D' }}>SPACE</span>
-        </Text>
+        <Image src={hyperspace} alt="logo" h="2rem" />
       </Flex>
       <HStack gap=".5em">
-        <Center w="2em" h="2em" borderRadius="full" border="1px solid #0f0f0f">
-          <TbDownload />
-        </Center>
+        <IconButton
+          border="1px solid"
+          size="sm"
+          borderColor="gray.400"
+          borderRadius="full"
+          variant="ghost"
+          icon={<TbDownload />}
+          aria-label="download and upload progress"
+        />
         <Button
           borderRadius="3xl"
+          size="sm"
           leftIcon={<FiUpload />}
           colorScheme="primary"
           onClick={() => setUpdaloadFile(true)}

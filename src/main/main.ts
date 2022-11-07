@@ -15,7 +15,9 @@ import { ethers } from 'ethers';
 import fs from 'fs';
 import path from 'path';
 import MenuBuilder from './menu';
+
 import { resolveHtmlPath } from './util';
+
 class AppUpdater {
   constructor() {
     log.transports.file.level = 'info';
@@ -88,8 +90,8 @@ const createWindow = async () => {
 
   mainWindow = new BrowserWindow({
     show: false,
-    width: 1920,
-    height: 1080,
+    width: 1024,
+    height: 768,
     icon: getAssetPath('icon.png'),
     webPreferences: {
       preload: app.isPackaged

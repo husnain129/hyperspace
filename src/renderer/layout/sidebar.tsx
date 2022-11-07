@@ -33,90 +33,106 @@ const Sidebar = () => {
         alignItems="flex-start"
         justifyContent="flex-start"
       >
-        <Flex gap=".8em" alignItems={'center'}>
+        <Flex gap=".8em" alignItems={'center'} pl="0.2em">
           <Image
             src="https://i.ebayimg.com/images/g/w9kAAOSwZp5fIhxW/s-l800.jpg"
             borderRadius="full"
-            w="3.2em"
-            h="3.2em"
+            w="3em"
+            h="3em"
             alt="user"
             objectFit="cover"
           />
-          <Flex flexDir={'column'} alignItems="flex-start">
-            <Text color="#494949" fontSize=".8em" fontWeight="semibold">
-              Humayun Javed
+          <Flex flexDir={'column'} alignItems="flex-start" gap="0.2em">
+            <Text color="#494949" fontSize="1em" fontWeight="bold">
+              Mark Zuck
             </Text>
-            <Flex gap=".2em" color="#494949">
-              <HiMenuAlt2 color="#494949" />
-              <Text fontSize=".7em" color="#494949">
-                3.2
+            <Flex gap=".5em" color="gray.500" align={'center'}>
+              {/* ICON here */}
+              <Text
+                fontSize="0.8em"
+                // fontFamily={'mono'}
+                fontWeight="bold"
+                color="gray.500"
+              >
+                Ξ 3.2
               </Text>
-              <BiRefresh color="#494949" />
+              <BiRefresh />
             </Flex>
           </Flex>
         </Flex>
-        <Flex flexDir={'column'} gap=".2em" w="100%">
+        <Flex flexDir={'column'} gap=".5em" w="100%">
           <HStack
+            transition="all 0.1s ease-in-out"
             {...selectedStyle(0)}
             w="full"
-            h="2.8em"
-            borderRadius={'md'}
+            h="2.4em"
+            borderRadius={'4px'}
             cursor={'pointer'}
             _hover={{
-              background: 'primary.500',
-              color: '#fff',
+              ...(selected !== 0 ? { background: 'gray.200' } : {}),
+              // color: '#',
             }}
             alignItems={'center'}
             justifyContent="flex-start"
-            gap={'.2em'}
+            gap={'0.2em'}
             pl={'1.2em'}
             onClick={() => setSelected(0)}
           >
-            <TbLayoutDashboard size={'1.2em'} />
-            <Text fontSize={'.95em'}>Dashboard</Text>
+            <TbLayoutDashboard size={'1em'} />
+            <Text fontSize={'.9em'} fontWeight="semibold">
+              Dashboard
+            </Text>
           </HStack>
           <HStack
+            transition="all 0.1s ease-in-out"
             {...selectedStyle(1)}
             w="full"
-            h="2.8em"
-            borderRadius={'md'}
+            h="2.4em"
+            borderRadius={'4px'}
             cursor={'pointer'}
             _hover={{
-              background: 'primary.500',
-              color: '#fff',
+              ...(selected !== 1 ? { background: 'gray.200' } : {}),
+              // color: '#',
             }}
             alignItems={'center'}
             justifyContent="flex-start"
             pl={'1.2em'}
+            gap="0.2em"
             onClick={() => setSelected(1)}
           >
-            <BsBarChart size={'1.2em'} />
-            <Text fontSize={'.95em'}>Analsys</Text>
+            <BsBarChart size={'1em'} />
+            <Text fontSize={'.9em'} fontWeight="semibold">
+              Nodes
+            </Text>
           </HStack>
           <HStack
+            transition="all 0.1s ease-in-out"
             {...selectedStyle(2)}
             w="full"
-            h="2.8em"
-            borderRadius={'md'}
+            h="2.4em"
+            borderRadius={'4px'}
             cursor={'pointer'}
             _hover={{
-              background: 'primary.500',
-              color: '#fff',
+              ...(selected !== 2 ? { background: 'gray.200' } : {}),
+              // color: '#',
             }}
             alignItems={'center'}
             justifyContent="flex-start"
-            gap={'.2em'}
+            gap={'0.2em'}
             pl={'1.2em'}
             onClick={() => setSelected(2)}
           >
-            <IoSettingsOutline size={'1.2em'} />
-            <Text fontSize={'.95em'}>Configuration</Text>
+            <IoSettingsOutline size={'1em'} />
+            <Text fontSize={'.9em'} fontWeight="semibold">
+              Configuration
+            </Text>
           </HStack>
         </Flex>
       </VStack>
       <Button
-        w="90%"
-        colorScheme={'red'}
+        // w="90%"
+        colorScheme={'blackAlpha'}
+        variant={'ghost'}
         leftIcon={<HiOutlineArrowNarrowLeft />}
         onClick={() => navigate('/auth')}
       >
