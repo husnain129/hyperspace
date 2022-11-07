@@ -5,6 +5,7 @@ import './App.css';
 import Auth from './components/auth';
 import AlreadyHaveAnAccount from './components/auth/AlreadyHaveAnAccount';
 import CreateAccount from './components/auth/CreateAccount';
+import FileContainer from './components/file';
 import Layout from './layout';
 import AuthLayout from './layout/AuthLayout';
 
@@ -32,7 +33,7 @@ export default function App() {
           path="/"
           element={
             <Layout>
-              <Hello />
+              <FileContainer />
             </Layout>
           }
         />
