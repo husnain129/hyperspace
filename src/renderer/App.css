@@ -15,6 +15,17 @@ body {
   font-size: 16px;
 }
 
+::-webkit-scrollbar {
+  background: #eee;
+  height: 4px;
+  width: 4px;
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb {
+  background-color: #ccc;
+  border-radius: 2px;
+}
+
 * {
   user-select: none;
 }

@@ -6,6 +6,7 @@ import Auth from './components/auth';
 import AlreadyHaveAnAccount from './components/auth/AlreadyHaveAnAccount';
 import CreateAccount from './components/auth/CreateAccount';
 import FileContainer from './components/file';
+import Nodes from './components/nodes/nodes';
 import Layout from './layout';
 import AuthLayout from './layout/AuthLayout';
 
@@ -30,14 +31,6 @@ export default function App() {
     <Router>
       <Routes>
         <Route
-          path="/"
-          element={
-            <Layout>
-              <FileContainer />
-            </Layout>
-          }
-        />
-        <Route
           path="/auth"
           element={
             <AuthLayout>
@@ -59,6 +52,22 @@ export default function App() {
             <AuthLayout>
               <AlreadyHaveAnAccount />
             </AuthLayout>
+          }
+        />
+        <Route
+          path="/nodes"
+          element={
+            <Layout>
+              <Nodes />
+            </Layout>
+          }
+        />
+        <Route
+          path="/"
+          element={
+            <Layout>
+              <FileContainer />
+            </Layout>
           }
         />
       </Routes>

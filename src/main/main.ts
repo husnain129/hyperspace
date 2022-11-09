@@ -14,6 +14,8 @@ import { autoUpdater } from 'electron-updater';
 import { ethers } from 'ethers';
 import fs from 'fs';
 import path from 'path';
+import NodeAPI from '../node-api/node-api';
+import { ContractAPI } from './contract-api';
 import MenuBuilder from './menu';
 
 import { resolveHtmlPath } from './util';
@@ -48,6 +50,21 @@ ipcMain.on('createNewUserFile', async (event, arg: { username: string }) => {
 ipcMain.on('get-data', (event, arg) => {
   console.log(arg);
   event.reply('get-data', 'husnain is getting data');
+});
+
+ipcMain.handle('get-node-info', async (event, hostname) => {
+  const stats = await NodeAPI.GetStats(hostname);
+  return stats;
+});
+ipcMain.handle('get-nodes', async (event, arg) => {
+  console.log('Handling get-nodes');
+
+  return ContractAPI.getStorageNodesAddress();
+  // .then((nodes) => {
+  //   console.log('Got nodes', nodes);
+  //   event.reply('get-nodes', nodes);
+  // })
+  // .catch((er) => console.log(er));
 });
 
 if (process.env.NODE_ENV === 'production') {

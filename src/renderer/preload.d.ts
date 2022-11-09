@@ -10,9 +10,9 @@ declare global {
           func: (...args: unknown[]) => void
         ): (() => void) | undefined;
         once(channel: Channels, func: (...args: unknown[]) => void): void;
+        invoke(channel: string, ...args: any[]): Promise<any>;
       };
     };
   }
 }
-
 export {};

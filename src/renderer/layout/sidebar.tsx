@@ -76,7 +76,10 @@ const Sidebar = () => {
             justifyContent="flex-start"
             gap={'0.2em'}
             pl={'1.2em'}
-            onClick={() => setSelected(0)}
+            onClick={() => {
+              navigate('/');
+              setSelected(0);
+            }}
           >
             <TbLayoutDashboard size={'1em'} />
             <Text fontSize={'.9em'} fontWeight="semibold">
@@ -98,7 +101,10 @@ const Sidebar = () => {
             justifyContent="flex-start"
             pl={'1.2em'}
             gap="0.2em"
-            onClick={() => setSelected(1)}
+            onClick={() => {
+              navigate('/nodes');
+              setSelected(1);
+            }}
           >
             <BsBarChart size={'1em'} />
             <Text fontSize={'.9em'} fontWeight="semibold">
@@ -120,7 +126,9 @@ const Sidebar = () => {
             justifyContent="flex-start"
             gap={'0.2em'}
             pl={'1.2em'}
-            onClick={() => setSelected(2)}
+            onClick={() => {
+              setSelected(2);
+            }}
           >
             <IoSettingsOutline size={'1em'} />
             <Text fontSize={'.9em'} fontWeight="semibold">
