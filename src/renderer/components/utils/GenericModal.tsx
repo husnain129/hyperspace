@@ -1,5 +1,6 @@
 import {
   Button,
+  HStack,
   Modal,
   ModalBody,
   ModalCloseButton,
@@ -26,15 +27,32 @@ function GenericModal({
       <Modal isOpen={isOpen} onClose={onClose}>
         <ModalOverlay />
         <ModalContent minW="max-content" minH="max-content">
-          <ModalHeader>{title}</ModalHeader>
+          <ModalHeader fontSize={'md'} fontWeight="black">
+            {title}
+          </ModalHeader>
           <ModalCloseButton />
           <ModalBody w="max-content" h="max-content">
             {children}
           </ModalBody>
           <ModalFooter>
-            <Button colorScheme="blue" variant="outline" onClick={onClose}>
-              Close
-            </Button>
+            {
+              <HStack>
+                <Button colorScheme={'primary'} h="2rem">
+                  Upload
+                </Button>
+                <Button
+                  my="0.3em"
+                  colorScheme="gray"
+                  variant="ghost"
+                  // py="0.1em"
+                  borderRadius={'4px'}
+                  h="2rem"
+                  onClick={onClose}
+                >
+                  Cancel
+                </Button>
+              </HStack>
+            }
           </ModalFooter>
         </ModalContent>
       </Modal>

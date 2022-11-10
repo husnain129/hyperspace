@@ -8,7 +8,9 @@ export type Channels =
   | 'get-node-info'
   | 'get-account'
   | 'create-account'
-  | 'get-balance';
+  | 'get-balance'
+  | 'browse-file'
+  | 'upload-click';
 
 contextBridge.exposeInMainWorld('electron', {
   ipcRenderer: {

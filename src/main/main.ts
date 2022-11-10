@@ -8,7 +8,15 @@
  * When running `npm run build` or `npm run build:main`, this file is compiled to
  * `./src/main.js` using webpack. This gives us some performance wins.
  */
-import { app, BrowserWindow, ipcMain, shell } from 'electron';
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  ipcMain,
+  ipcRenderer,
+  shell,
+  TouchBar,
+} from 'electron';
 import log from 'electron-log';
 import { autoUpdater } from 'electron-updater';
 import { ethers } from 'ethers';
@@ -68,6 +76,14 @@ ipcMain.handle('get-account', async (event, hostname) => {
   const account = await DB_API.getAccount();
   return account;
 });
+ipcMain.handle('browse-file', async (event) => {
+  const selectedPath = dialog.showOpenDialogSync(mainWindow!, {});
+  if (!selectedPath || selectedPath.length == 0) return null;
+  const { name, ext } = path.parse(selectedPath[0]);
+
+  const stats = fs.statSync(selectedPath[0]);
+  return { path: selectedPath[0], size: stats.size, name, ext };
+});
 ipcMain.handle('get-nodes', async (event, arg) => {
   console.log('Handling get-nodes');
 
@@ -104,6 +120,88 @@ const installExtensions = async () => {
     .catch(console.log);
 };
 
+const { TouchBarLabel, TouchBarButton, TouchBarSpacer } = TouchBar;
+
+let spinning = false;
+
+// Reel labels
+const reel1 = new TouchBarButton({});
+const reel2 = new TouchBarLabel({});
+const reel3 = new TouchBarLabel({});
+
+// Spin result label
+const result = new TouchBarLabel({});
+
+// Spin button
+const spin = new TouchBarButton({
+  label: '⇪ Upload',
+  backgroundColor: '#3a4780',
+  click: () => {
+    mainWindow?.webContents.send('upload-click');
+    // ipcRenderer.emit('upload-click');
+    // // Ignore clicks if already spinning
+    // if (spinning) {
+    //   return;
+    // }
+
+    // spinning = true;
+    // result.label = '';
+
+    // let timeout = 10;
+    // const spinLength = 4 * 1000; // 4 seconds
+    // const startTime = Date.now();
+
+    // const spinReels = () => {
+    //   updateReels();
+
+    //   if (Date.now() - startTime >= spinLength) {
+    //     finishSpin();
+    //   } else {
+    //     // Slow down a bit on each spin
+    //     timeout *= 1.1;
+    //     setTimeout(spinReels, timeout);
+    //   }
+    // };
+
+    // spinReels();
+  },
+});
+
+const getRandomValue = () => {
+  const values = ['🍒', '💎', '7️⃣', '🍊', '🔔', '⭐', '🍇', '🍀'];
+  return values[Math.floor(Math.random() * values.length)];
+};
+
+const updateReels = () => {
+  reel1.label = getRandomValue();
+  reel2.label = getRandomValue();
+  reel3.label = getRandomValue();
+};
+
+const finishSpin = () => {
+  const uniqueValues = new Set([reel1.label, reel2.label, reel3.label]).size;
+  if (uniqueValues === 1) {
+    // All 3 values are the same
+    result.label = '💰 Jackpot!';
+    result.textColor = '#FDFF00';
+  } else if (uniqueValues === 2) {
+    // 2 values are the same
+    result.label = '😍 Winner!';
+    result.textColor = '#FDFF00';
+  } else {
+    // No values are the same
+    result.label = '🙁 Spin Again';
+    result.textColor = null;
+  }
+  spinning = false;
+};
+
+const touchBar = new TouchBar({
+  items: [spin],
+});
+
+let window;
+
 const createWindow = async () => {
   if (isDebug) {
     await installExtensions();
@@ -125,12 +223,15 @@ const createWindow = async () => {
     backgroundColor: '#fff',
     titleBarStyle: 'hiddenInset',
     trafficLightPosition: { x: 30, y: 20 },
+
     webPreferences: {
       preload: app.isPackaged
         ? path.join(__dirname, 'preload.js')
         : path.join(__dirname, '../../.erb/dll/preload.js'),
     },
   });
+
+  mainWindow.setTouchBar(touchBar);
 
   mainWindow.loadURL(resolveHtmlPath('index.html'));
 

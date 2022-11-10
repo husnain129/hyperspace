@@ -14,8 +14,7 @@ import UploadFile from 'renderer/components/file/UploadFile';
 import GenericModal from 'renderer/components/utils/GenericModal';
 import hyperspace from '../../../assets/hyperspace.svg';
 
-const Navbar = () => {
-  const [updaloadFile, setUpdaloadFile] = useState(false);
+const Navbar = (props: { onUploadClick: () => void; isUploading: boolean }) => {
   return (
     <HStack
       className="draggable-region"
@@ -44,23 +43,18 @@ const Navbar = () => {
           aria-label="download and upload progress"
         />
         <Button
-          px="1em"
-          borderRadius="3xl"
+          px="1.1em"
+          borderRadius="30px"
+          // py="1em"
           size="sm"
           leftIcon={<FiUpload />}
           colorScheme="primary"
-          onClick={() => setUpdaloadFile(true)}
+          isLoading={props.isUploading}
+          onClick={props.onUploadClick}
         >
           Upload
         </Button>
       </HStack>
-      <GenericModal
-        isOpen={updaloadFile}
-        onClose={() => setUpdaloadFile(false)}
-        title="Upload File"
-      >
-        <UploadFile />
-      </GenericModal>
     </HStack>
   );
 };

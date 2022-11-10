@@ -24,6 +24,30 @@ import { useEffect, useState } from 'react';
 import prettyBytes from 'pretty-bytes';
 import BladeSpinner from '../blade-spinner/BladeSpinner';
 
+export const MTD = (props: React.ComponentProps<typeof Td>) => (
+  <Td
+    // eslint-disable-next-line react/jsx-props-no-spreading
+    p={0}
+    // eslint-disable-next-line react/jsx-props-no-spreading
+    {...props}
+  >
+    <Flex
+      flex={1}
+      w="full"
+      fontSize="sm"
+      maxW="15ch"
+      overflowX="auto"
+      whiteSpace="nowrap"
+      px="1em"
+      // bg="green"
+      py="0.8em"
+      mb="0.1em"
+    >
+      {/* eslint-disable-next-line react/destructuring-assignment */}
+      {props.children}
+    </Flex>
+  </Td>
+);
 export default function Nodes() {
   const [loading, setLoading] = useState(false);
 
@@ -102,30 +126,6 @@ export default function Nodes() {
     };
   }, []);
 
-  const MTD = (props: React.ComponentProps<typeof Td>) => (
-    <Td
-      // eslint-disable-next-line react/jsx-props-no-spreading
-      p={0}
-      // eslint-disable-next-line react/jsx-props-no-spreading
-      {...props}
-    >
-      <Flex
-        flex={1}
-        w="full"
-        fontSize="sm"
-        maxW="15ch"
-        overflowX="auto"
-        whiteSpace="nowrap"
-        px="1em"
-        // bg="green"
-        py="0.8em"
-        mb="0.1em"
-      >
-        {/* eslint-disable-next-line react/destructuring-assignment */}
-        {props.children}
-      </Flex>
-    </Td>
-  );
   return (
     <Flex w="full" flexDir="column" p="2em">
       <Heading size="md" mb="1.5rem" color="gray.700">
