@@ -5,7 +5,9 @@ export type Channels =
   | 'get-data'
   | 'createNewUserFile'
   | 'get-nodes'
-  | 'get-node-info';
+  | 'get-node-info'
+  | 'get-account'
+  | 'create-account';
 
 contextBridge.exposeInMainWorld('electron', {
   ipcRenderer: {

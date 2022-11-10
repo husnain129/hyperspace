@@ -1,5 +1,14 @@
 import { Button, Flex, HStack, Text, VStack } from '@chakra-ui/react';
-import { useNavigate } from 'react-router-dom';
+import { IAccount } from 'main/db-api';
+import {
+  MemoryRouter as Router,
+  Route,
+  Routes,
+  useNavigate,
+} from 'react-router-dom';
+import AuthLayout from 'renderer/layout/AuthLayout';
+import AlreadyHaveAnAccount from './AlreadyHaveAnAccount';
+import CreateAccount from './CreateAccount';
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -23,11 +32,14 @@ const Auth = () => {
             Let’s start by configuring your account.
           </Text>
           <HStack>
-            <Button onClick={() => navigate('/new')} colorScheme="primary">
+            <Button
+              onClick={() => navigate('/auth/new-account')}
+              colorScheme="primary"
+            >
               Creata a new account
             </Button>
             <Button
-              onClick={() => navigate('/already_have_account')}
+              onClick={() => navigate('/auth/load-account')}
               variant="ghost"
               outline="1px solid #4859a0"
             >
@@ -40,4 +52,39 @@ const Auth = () => {
   );
 };
 
-export default Auth;
+export default function Index(props: {
+  onAccountLoaded: (account: IAccount) => void;
+}) {
+  return (
+    <Routes>
+      <Route
+        path="/new-account"
+        element={
+          <AuthLayout>
+            <CreateAccount
+              onAccountCreated={(account: IAccount) =>
+                props.onAccountLoaded(account)
+              }
+            />
+          </AuthLayout>
+        }
+      />
+      <Route
+        path="/load-account"
+        element={
+          <AuthLayout>
+            <AlreadyHaveAnAccount />
+          </AuthLayout>
+        }
+      />
+      <Route
+        path="/"
+        element={
+          <AuthLayout>
+            <Auth />
+          </AuthLayout>
+        }
+      />
+    </Routes>
+  );
+}

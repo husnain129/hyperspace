@@ -1,3 +1,4 @@
+/* eslint-disable react/destructuring-assignment */
 /* eslint-disable react/no-children-prop */
 import {
   Button,
@@ -13,16 +14,42 @@ import { BsChevronRight } from 'react-icons/bs';
 import { FiChevronLeft } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import * as ethers from 'ethers';
+import { IAccount } from 'main/db-api';
 
-const CreateAccount = () => {
+const CreateAccount = (props: {
+  onAccountCreated: (account: IAccount) => void;
+}) => {
   const navigate = useNavigate();
-
+  const [name, setName] = useState('');
   const [step, setStep] = useState<'NAME' | 'KEY'>('NAME');
 
   const [key, setKey] = useState('');
   const handleGenerateNew = () => {
     const w = ethers.Wallet.createRandom();
     setKey(w.privateKey);
+  };
+
+  const [sumbitting, setSubmitting] = useState(false);
+  const handleSubmit = async () => {
+    if (key.length < 66 || name.length < 3) return;
+    setSubmitting(true);
+
+    try {
+      await window.electron.ipcRenderer.invoke('create-account', {
+        name,
+        private_key: key,
+        created_at: Date.now(),
+      } as IAccount);
+      const acc = (await window.electron.ipcRenderer.invoke(
+        'get-account'
+      )) as IAccount; //confirmation
+
+      props.onAccountCreated(acc);
+    } catch (er) {
+      console.warn(er);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -46,7 +73,12 @@ const CreateAccount = () => {
             What should we call you?
           </Text>
           <VStack pt="2em" gap="1em" w="full" alignItems="flex-start">
-            <Input placeholder="Enter your name" autoFocus />
+            <Input
+              placeholder="Enter your name"
+              autoFocus
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
             <Button
               onClick={() => setStep('KEY')}
               colorScheme="primary"
@@ -85,11 +117,12 @@ const CreateAccount = () => {
             />
             <HStack gap="1em">
               <Button
-                onClick={() => navigate('/')}
+                onClick={() => handleSubmit()}
                 colorScheme="primary"
                 rightIcon={
                   <BsChevronRight fontSize="0.8em" strokeWidth="1px" />
                 }
+                isLoading={sumbitting}
               >
                 Next
               </Button>

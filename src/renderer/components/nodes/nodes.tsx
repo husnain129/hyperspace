@@ -1,8 +1,10 @@
+/* eslint-disable no-nested-ternary */
 /* eslint-disable promise/no-nesting */
 /* eslint-disable promise/always-return */
 /* eslint-disable react/no-array-index-key */
 /* eslint-disable no-restricted-syntax */
 import {
+  Circle,
   Flex,
   Heading,
   Link,
@@ -19,12 +21,15 @@ import {
 // import { ipcRenderer } from 'electron';
 // import { ipcRenderer } from 'electron';
 import { useEffect, useState } from 'react';
+import prettyBytes from 'pretty-bytes';
+import BladeSpinner from '../blade-spinner/BladeSpinner';
 
 export default function Nodes() {
   const [loading, setLoading] = useState(false);
 
   const [list, setList] = useState<
     Array<{
+      statsLoading: boolean;
       onlineStatus: boolean;
       address: string;
       host: string;
@@ -42,31 +47,50 @@ export default function Nodes() {
     // eslint-disable-next-line promise/always-return, promise/catch-or-return
     r.then((s) => {
       console.log('Nodes:', s);
-      setList(s);
-      const nodeR = window.electron.ipcRenderer.invoke(
-        'get-node-info',
-        'localhost:8000'
+      setList(
+        (s as typeof list).map((n) => ({
+          ...n,
+          freeStorage: 0,
+          statsLoading: true,
+          onlineStatus: false,
+        }))
       );
-      nodeR
-        .then((res) => {
-          setList((_list) =>
-            _list.map((_l, i) =>
-              i > 0
-                ? _l
-                : {
-                    ..._l,
-                    freeStorage: res.freeStorage,
-                    latency: res.latency,
-                    onlineStatus: true,
-                  }
-            )
-          );
-        })
-        .catch((er) => {
-          setList((_list) =>
-            _list.map((_l, i) => (i > 0 ? _l : { ..._l, onlineStatus: false }))
-          );
-        });
+      setTimeout(() => {
+        const nodeR = window.electron.ipcRenderer.invoke(
+          'get-node-info',
+          'localhost:8000'
+        );
+        nodeR
+          .then((res) => {
+            setList((_list) =>
+              _list.map((_l, i) =>
+                i > 0
+                  ? { ..._l, statsLoading: false }
+                  : {
+                      ..._l,
+                      freeStorage: res.freeStorage,
+                      latency: res.latency,
+                      onlineStatus: true,
+                      statsLoading: false,
+                    }
+              )
+            );
+          })
+          .catch((er) => {
+            setList((_list) =>
+              _list.map((_l, i) =>
+                i > 0
+                  ? { ..._l, statsLoading: false }
+                  : {
+                      ..._l,
+                      onlineStatus: false,
+                      freeStorage: 0,
+                      statsLoading: false,
+                    }
+              )
+            );
+          });
+      }, 2000);
     })
       .catch((er) => console.log(er))
       .finally(() => {
@@ -139,38 +163,60 @@ export default function Nodes() {
                 ))}
               </Tr>
             ))}
-          {list.map((l, i) => (
-            // eslint-disable-next-line react/no-array-index-key
-            <Tr key={i}>
-              <MTD>
-                <Link
-                  fontFamily="mono"
-                  color="blue.600"
-                  href={`https://etherscan.io/address/${l.address}`}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  {l.address}
-                </Link>
-              </MTD>
+          {list.map((l, i) => {
+            return (
+              // eslint-disable-next-line react/no-array-index-key
+              <Tr key={i}>
+                <MTD>
+                  <Link
+                    fontFamily="mono"
+                    color="blue.600"
+                    href={`https://etherscan.io/address/${l.address}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {l.address}
+                  </Link>
+                </MTD>
 
-              <MTD>{l.host}</MTD>
+                <MTD>{l.host}</MTD>
 
-              <MTD>
-                <Link
-                  fontFamily="mono"
-                  color="blue.600"
-                  href={`https://etherscan.io/address/${l.owner}`}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  {l.owner}
-                </Link>
-              </MTD>
-              <MTD>{l.onlineStatus ? 'Online' : 'Offline'}</MTD>
-              <MTD fontFamily="mono">{l.freeStorage} B</MTD>
-            </Tr>
-          ))}
+                <MTD>
+                  <Link
+                    fontFamily="mono"
+                    color="blue.600"
+                    href={`https://etherscan.io/address/${l.owner}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {l.owner}
+                  </Link>
+                </MTD>
+                <MTD>
+                  {l.statsLoading ? (
+                    <BladeSpinner size="sm" />
+                  ) : l.onlineStatus ? (
+                    <Flex align="center" gap="0.5em">
+                      <Circle size="10px" bg="green.300" />
+                      <Text size="sm">Online</Text>
+                    </Flex>
+                  ) : (
+                    <Flex align="center" gap="0.5em">
+                      <Circle size="10px" bg="red.300" />
+                      <Text size="sm">Offline</Text>
+                    </Flex>
+                  )}
+                </MTD>
+                <MTD fontFamily="mono">
+                  {l.statsLoading ? (
+                    <BladeSpinner size="sm" />
+                  ) : (
+                    prettyBytes(l.freeStorage)
+                  )}
+                </MTD>
+              </Tr>
+            );
+          })}
         </Tbody>
       </Table>
     </Flex>

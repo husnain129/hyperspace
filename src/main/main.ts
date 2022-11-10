@@ -16,6 +16,7 @@ import fs from 'fs';
 import path from 'path';
 import NodeAPI from '../node-api/node-api';
 import { ContractAPI } from './contract-api';
+import DB_API, { IAccount } from './db-api';
 import MenuBuilder from './menu';
 
 import { resolveHtmlPath } from './util';
@@ -55,6 +56,14 @@ ipcMain.on('get-data', (event, arg) => {
 ipcMain.handle('get-node-info', async (event, hostname) => {
   const stats = await NodeAPI.GetStats(hostname);
   return stats;
+});
+
+ipcMain.handle('create-account', async (event, account: IAccount) => {
+  await DB_API.createAccount(account);
+});
+ipcMain.handle('get-account', async (event, hostname) => {
+  const account = await DB_API.getAccount();
+  return account;
 });
 ipcMain.handle('get-nodes', async (event, arg) => {
   console.log('Handling get-nodes');

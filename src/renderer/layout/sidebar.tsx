@@ -8,14 +8,24 @@ import { HiMenuAlt2, HiOutlineArrowNarrowLeft } from 'react-icons/hi';
 import { IoSettingsOutline } from 'react-icons/io5';
 import { TbLayoutDashboard } from 'react-icons/tb';
 import { useNavigate } from 'react-router-dom';
+import useAccount from 'renderer/hooks/useAccount';
 
-const Sidebar = () => {
+import EthLogo from '../../../assets/ethereum-eth-logo.svg';
+
+export enum NAVIGATION {
+  DASHBOARD,
+  NODES,
+  CONFIGURATION,
+}
+
+const Sidebar = ({ activeNavigation }: { activeNavigation: NAVIGATION }) => {
   const navigate = useNavigate();
-  const [selected, setSelected] = useState(0);
-  const selectedStyle = (selectedNumber: number) => ({
-    bg: selected === selectedNumber ? 'primary.500' : 'transparent',
-    color: selected === selectedNumber ? '#fff' : '#6A6A6A',
+  const selected = activeNavigation;
+  const selectedStyle = (selectedNav: NAVIGATION) => ({
+    bg: selected === selectedNav ? 'primary.500' : 'transparent',
+    color: selected === selectedNav ? '#fff' : '#6A6A6A',
   });
+  const { account } = useAccount();
   return (
     <VStack
       w="30%"
@@ -33,18 +43,17 @@ const Sidebar = () => {
         alignItems="flex-start"
         justifyContent="flex-start"
       >
-        <Flex gap=".8em" alignItems={'center'} pl="0.2em">
+        <Flex gap="1em" alignItems={'center'} pl="0.2em">
           <Image
-            src="https://i.ebayimg.com/images/g/w9kAAOSwZp5fIhxW/s-l800.jpg"
+            src={EthLogo}
             borderRadius="full"
-            w="3em"
-            h="3em"
+            h="2.5rem"
             alt="user"
             objectFit="cover"
           />
           <Flex flexDir={'column'} alignItems="flex-start" gap="0.2em">
             <Text color="#494949" fontSize="1em" fontWeight="bold">
-              Mark Zuck
+              {account.name}
             </Text>
             <Flex gap=".5em" color="gray.500" align={'center'}>
               {/* ICON here */}
@@ -63,7 +72,7 @@ const Sidebar = () => {
         <Flex flexDir={'column'} gap=".5em" w="100%">
           <HStack
             transition="all 0.1s ease-in-out"
-            {...selectedStyle(0)}
+            {...selectedStyle(NAVIGATION.DASHBOARD)}
             w="full"
             h="2.4em"
             borderRadius={'4px'}
@@ -78,7 +87,6 @@ const Sidebar = () => {
             pl={'1.2em'}
             onClick={() => {
               navigate('/');
-              setSelected(0);
             }}
           >
             <TbLayoutDashboard size={'1em'} />
@@ -88,7 +96,7 @@ const Sidebar = () => {
           </HStack>
           <HStack
             transition="all 0.1s ease-in-out"
-            {...selectedStyle(1)}
+            {...selectedStyle(NAVIGATION.NODES)}
             w="full"
             h="2.4em"
             borderRadius={'4px'}
@@ -103,7 +111,6 @@ const Sidebar = () => {
             gap="0.2em"
             onClick={() => {
               navigate('/nodes');
-              setSelected(1);
             }}
           >
             <BsBarChart size={'1em'} />
@@ -113,7 +120,7 @@ const Sidebar = () => {
           </HStack>
           <HStack
             transition="all 0.1s ease-in-out"
-            {...selectedStyle(2)}
+            {...selectedStyle(NAVIGATION.CONFIGURATION)}
             w="full"
             h="2.4em"
             borderRadius={'4px'}
@@ -127,7 +134,7 @@ const Sidebar = () => {
             gap={'0.2em'}
             pl={'1.2em'}
             onClick={() => {
-              setSelected(2);
+              // setSelected(2);
             }}
           >
             <IoSettingsOutline size={'1em'} />
