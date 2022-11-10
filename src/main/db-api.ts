@@ -9,6 +9,8 @@ const dbFile = path.join(__dirname, '../../assets', 'account.dat');
 export interface IAccount {
   name: string;
   private_key: string;
+  public_key: string;
+  address: string;
   created_at: number;
 }
 
@@ -53,16 +55,22 @@ const DB_API = {
     }
     console.log('Creating table');
     await this.db!.exec(`CREATE TABLE IF NOT EXISTS account (
-      name VARCHAR[256],
-      private_key VARCHAR[256],
+      name VARCHAR(256),
+      private_key VARCHAR(256),
+      public_key VARCHAR(256),
+      address VARCHAR(256),
+
       created_at int(11)
     )`);
 
     console.log('Table created');
     await this.db!.run(
-      'INSERT INTO account (name,private_key,created_at) VALUES(?,?,?)',
+      'INSERT INTO account (name,private_key,public_key,address,created_at) VALUES(?,?,?,?,?)',
       account.name,
       account.private_key,
+      account.public_key,
+      account.address,
+
       account.created_at
     );
   },

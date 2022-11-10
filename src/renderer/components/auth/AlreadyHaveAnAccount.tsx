@@ -14,7 +14,6 @@ const AlreadyHaveAnAccount = () => {
     >
       <VStack w="full" alignItems="flex-start">
         <Text fontSize="1.5em" fontWeight="semibold">
-          {' '}
           Select your account file
         </Text>
         <VStack pt="2em" gap=".2em" w="full" alignItems="flex-start">
@@ -30,16 +29,14 @@ const AlreadyHaveAnAccount = () => {
           </Button>
         </VStack>
       </VStack>
-      <Flex
-        gap=".2em"
-        cursor="pointer"
-        alignItems="center"
-        justifyContent="center"
+      <Button
+        variant="link"
+        colorScheme="gray"
         onClick={() => navigate(-1)}
+        leftIcon={<FiChevronLeft strokeWidth="3px" />}
       >
-        <FiChevronLeft />
-        <Text>Back</Text>
-      </Flex>
+        Back
+      </Button>
     </VStack>
   );
 };

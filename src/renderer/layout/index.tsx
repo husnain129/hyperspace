@@ -15,9 +15,9 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         <Sidebar
           activeNavigation={
             {
-              '/nodes': NAVIGATION.NODES,
               '/': NAVIGATION.DASHBOARD,
-              '/config': NAVIGATION.CONFIGURATION,
+              '/nodes': NAVIGATION.NODES,
+              '/account': NAVIGATION.ACCOUNT,
             }[n.pathname] as NAVIGATION
           }
         />

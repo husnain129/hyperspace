@@ -2,7 +2,7 @@
 /* eslint-disable promise/catch-or-return */
 /* eslint-disable react/jsx-curly-brace-presence */
 import { Center, Text } from '@chakra-ui/react';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   MemoryRouter as Router,
   Route,
@@ -20,6 +20,7 @@ import Layout from './layout';
 import AuthLayout from './layout/AuthLayout';
 import type { IAccount } from '../main/db-api';
 import AccountContextProvider from './contexts/AccountContext';
+import Account from './components/account/account';
 
 const Hello = () => {
   return (
@@ -65,20 +66,24 @@ export default function App() {
       .finally(() => {
         setAccountLoading(false);
       });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const ProtectedRoute: React.FunctionComponent<{
     children: React.ReactElement;
-  }> = (props) => {
-    return accountLoading || !account ? (
-      <Loading />
-    ) : (
-      <AccountContextProvider account={account} setAccount={setAccount}>
-        {/* eslint-disable-next-line react/destructuring-assignment */}
-        {props.children}
-      </AccountContextProvider>
-    );
-  };
+  }> = useCallback(
+    (props) => {
+      return accountLoading || !account ? (
+        <Loading />
+      ) : (
+        <AccountContextProvider account={account} setAccount={setAccount}>
+          {/* eslint-disable-next-line react/destructuring-assignment */}
+          {props.children}
+        </AccountContextProvider>
+      );
+    },
+    [accountLoading, account]
+  );
   return (
     <Routes>
       <Route
@@ -94,21 +99,15 @@ export default function App() {
         }
       />
       <Route
-        path="/nodes"
+        path="/*"
         element={
           <ProtectedRoute>
             <Layout>
-              <Nodes />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <FileContainer />
+              <Routes>
+                <Route path="/" element={<FileContainer />} />
+                <Route path="/nodes" element={<Nodes />} />
+                <Route path="/account" element={<Account />} />
+              </Routes>
             </Layout>
           </ProtectedRoute>
         }

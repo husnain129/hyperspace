@@ -1,3 +1,4 @@
+/* eslint-disable react/destructuring-assignment */
 import { Button, Flex, HStack, Text, VStack } from '@chakra-ui/react';
 import { IAccount } from 'main/db-api';
 import {
@@ -22,10 +23,10 @@ const Auth = () => {
         justify="center"
         flex={1}
         gap="2em"
-        marginTop="-7rem"
+        marginTop="-2rem"
       >
         <Text fontSize="1.6em" fontWeight="black">
-          Welcome to HyperSpace
+          Welcome to Hyperspace
         </Text>
         <Flex gap="1.4em" flexDir="column">
           <Text color="#9B9B9B" fontSize="1em" fontWeight="semibold">

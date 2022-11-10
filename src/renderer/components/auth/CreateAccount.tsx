@@ -35,14 +35,19 @@ const CreateAccount = (props: {
     setSubmitting(true);
 
     try {
+      const publicKey = ethers.utils.computePublicKey(key);
+      const address = ethers.utils.computeAddress(publicKey);
+
       await window.electron.ipcRenderer.invoke('create-account', {
         name,
         private_key: key,
+        public_key: publicKey,
+        address,
         created_at: Date.now(),
       } as IAccount);
       const acc = (await window.electron.ipcRenderer.invoke(
         'get-account'
-      )) as IAccount; //confirmation
+      )) as IAccount; // confirmation
 
       props.onAccountCreated(acc);
     } catch (er) {
@@ -67,7 +72,7 @@ const CreateAccount = (props: {
           justify="center"
           flex={1}
           spacing={1}
-          marginTop="-4rem"
+          marginTop="0rem"
         >
           <Text fontSize="1.7em" fontWeight="black">
             What should we call you?
@@ -97,7 +102,7 @@ const CreateAccount = (props: {
           justify="center"
           flex={1}
           spacing={3}
-          marginTop="-4rem"
+          // marginTop="-4rem"
         >
           <Text fontSize="1.5em" fontWeight="black">
             Your account private key
@@ -133,17 +138,14 @@ const CreateAccount = (props: {
           </VStack>
         </VStack>
       )}
-      <Flex
-        marginTop="auto"
-        gap=".2em"
-        cursor="pointer"
-        alignItems="center"
-        justifyContent="center"
+      <Button
+        variant="link"
+        colorScheme="gray"
         onClick={() => navigate(-1)}
+        leftIcon={<FiChevronLeft strokeWidth="3px" />}
       >
-        <FiChevronLeft />
-        <Text>Back</Text>
-      </Flex>
+        Back
+      </Button>
     </VStack>
   );
 };

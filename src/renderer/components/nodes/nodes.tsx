@@ -128,7 +128,7 @@ export default function Nodes() {
   );
   return (
     <Flex w="full" flexDir="column" p="2em">
-      <Heading size="md" mb="1.5rem">
+      <Heading size="md" mb="1.5rem" color="gray.700">
         Nodes
       </Heading>
 

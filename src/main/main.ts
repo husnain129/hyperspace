@@ -61,6 +61,9 @@ ipcMain.handle('get-node-info', async (event, hostname) => {
 ipcMain.handle('create-account', async (event, account: IAccount) => {
   await DB_API.createAccount(account);
 });
+ipcMain.handle('get-balance', async (event, addr: string) => {
+  return ContractAPI.getBalance(addr);
+});
 ipcMain.handle('get-account', async (event, hostname) => {
   const account = await DB_API.getAccount();
   return account;
@@ -119,6 +122,9 @@ const createWindow = async () => {
     width: 1024,
     height: 768,
     icon: getAssetPath('icon.png'),
+    backgroundColor: '#fff',
+    titleBarStyle: 'hiddenInset',
+    trafficLightPosition: { x: 30, y: 20 },
     webPreferences: {
       preload: app.isPackaged
         ? path.join(__dirname, 'preload.js')

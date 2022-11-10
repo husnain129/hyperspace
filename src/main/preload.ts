@@ -7,7 +7,8 @@ export type Channels =
   | 'get-nodes'
   | 'get-node-info'
   | 'get-account'
-  | 'create-account';
+  | 'create-account'
+  | 'get-balance';
 
 contextBridge.exposeInMainWorld('electron', {
   ipcRenderer: {

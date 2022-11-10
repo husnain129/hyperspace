@@ -1,21 +1,32 @@
 /* eslint-disable react/jsx-props-no-spreading */
 /* eslint-disable react/jsx-curly-brace-presence */
-import { Button, Flex, HStack, Image, Text, VStack } from '@chakra-ui/react';
-import { useState } from 'react';
+import {
+  Box,
+  Button,
+  Flex,
+  HStack,
+  Image,
+  Text,
+  VStack,
+} from '@chakra-ui/react';
+import { ethers } from 'ethers';
+import { useCallback, useEffect, useState } from 'react';
 import { BiRefresh } from 'react-icons/bi';
 import { BsBarChart } from 'react-icons/bs';
 import { HiMenuAlt2, HiOutlineArrowNarrowLeft } from 'react-icons/hi';
 import { IoSettingsOutline } from 'react-icons/io5';
 import { TbLayoutDashboard } from 'react-icons/tb';
 import { useNavigate } from 'react-router-dom';
+import BladeSpinner from 'renderer/components/blade-spinner/BladeSpinner';
 import useAccount from 'renderer/hooks/useAccount';
+import hyperspace from '../../../assets/hyperspace.svg';
 
 import EthLogo from '../../../assets/ethereum-eth-logo.svg';
 
 export enum NAVIGATION {
   DASHBOARD,
   NODES,
-  CONFIGURATION,
+  ACCOUNT,
 }
 
 const Sidebar = ({ activeNavigation }: { activeNavigation: NAVIGATION }) => {
@@ -26,15 +37,45 @@ const Sidebar = ({ activeNavigation }: { activeNavigation: NAVIGATION }) => {
     color: selected === selectedNav ? '#fff' : '#6A6A6A',
   });
   const { account } = useAccount();
+  const [blncLoading, setBlncLoading] = useState(false);
+  const [balance, setBalance] = useState('');
+  const getAccountBalance = useCallback(() => {
+    setBlncLoading(true);
+    setTimeout(async () => {
+      try {
+        const blnc = await window.electron.ipcRenderer.invoke(
+          'get-balance',
+          account.address
+        );
+
+        const eth = Intl.NumberFormat('en', {
+          maximumFractionDigits: 4,
+        }).format(Number(ethers.utils.formatEther(blnc)));
+
+        setBalance(eth);
+      } catch (er) {
+        console.warn(er);
+      } finally {
+        setBlncLoading(false);
+      }
+    }, 1000);
+  }, [account.address]);
+
+  useEffect(() => {
+    getAccountBalance();
+  }, [getAccountBalance]);
+
   return (
     <VStack
-      w="30%"
+      minW="250px"
+      w="250px"
       h="full"
       borderRight="1px solid #F2F2F2"
       justifyContent="space-between"
       alignItems="center"
       px="1.5em"
-      py="2em"
+      pt="2em"
+      pb="1rem"
     >
       <VStack
         w="full"
@@ -55,17 +96,42 @@ const Sidebar = ({ activeNavigation }: { activeNavigation: NAVIGATION }) => {
             <Text color="#494949" fontSize="1em" fontWeight="bold">
               {account.name}
             </Text>
-            <Flex gap=".5em" color="gray.500" align={'center'}>
+            <Flex gap=".5em" color="gray.500" align={'center'} h="1rem">
               {/* ICON here */}
               <Text
                 fontSize="0.8em"
-                // fontFamily={'mono'}
-                fontWeight="bold"
+                fontFamily={'mono'}
+                fontWeight="semibold"
                 color="gray.500"
               >
-                Ξ 3.2
+                Ξ
               </Text>
-              <BiRefresh />
+              {blncLoading ? (
+                <BladeSpinner size="sm" />
+              ) : (
+                <>
+                  <Text
+                    fontSize="0.8em"
+                    fontFamily={'mono'}
+                    fontWeight="semibold"
+                    color="gray.500"
+                  >
+                    {balance}
+                  </Text>
+                  <Box
+                    transition="all 0.1s ease-in-out"
+                    _hover={{
+                      transform: 'rotate(45deg)',
+                    }}
+                  >
+                    <BiRefresh
+                      onClick={() => {
+                        getAccountBalance();
+                      }}
+                    />
+                  </Box>
+                </>
+              )}
             </Flex>
           </Flex>
         </Flex>
@@ -120,7 +186,7 @@ const Sidebar = ({ activeNavigation }: { activeNavigation: NAVIGATION }) => {
           </HStack>
           <HStack
             transition="all 0.1s ease-in-out"
-            {...selectedStyle(NAVIGATION.CONFIGURATION)}
+            {...selectedStyle(NAVIGATION.ACCOUNT)}
             w="full"
             h="2.4em"
             borderRadius={'4px'}
@@ -135,16 +201,26 @@ const Sidebar = ({ activeNavigation }: { activeNavigation: NAVIGATION }) => {
             pl={'1.2em'}
             onClick={() => {
               // setSelected(2);
+              navigate('/account');
             }}
           >
             <IoSettingsOutline size={'1em'} />
             <Text fontSize={'.9em'} fontWeight="semibold">
-              Configuration
+              Account
             </Text>
           </HStack>
         </Flex>
       </VStack>
-      <Button
+      <Flex
+        borderTop="1px solid"
+        borderColor="gray.200"
+        pt="1rem"
+        w="full"
+        justify="center"
+      >
+        <Image src={hyperspace} h="2em" alignSelf={'center'} />
+      </Flex>
+      {/* <Button
         // w="90%"
         colorScheme={'blackAlpha'}
         variant={'ghost'}
@@ -152,7 +228,7 @@ const Sidebar = ({ activeNavigation }: { activeNavigation: NAVIGATION }) => {
         onClick={() => navigate('/auth')}
       >
         Logout
-      </Button>
+      </Button> */}
     </VStack>
   );
 };
