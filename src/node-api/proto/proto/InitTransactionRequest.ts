@@ -1,19 +1,27 @@
-// Original file: ../storage-node-p1/proto/storage-node.proto
+// Original file: assets/storage-node.proto
 
 import type { Long } from '@grpc/proto-loader';
 
 export interface InitTransactionRequest {
   'fileSize'?: (number | string | Long);
-  'segmentsCount'?: (number);
+  'segmentsCount'?: (number | string | Long);
   'fileHash'?: (string);
-  'bid'?: (number | string | Long);
-  'timeperiod'?: (number | string | Long);
+  'bid'?: (string);
+  'userAddress'?: (string);
+  'timeStart'?: (number | string | Long);
+  'timeEnd'?: (number | string | Long);
+  'concludeTimeout'?: (number | string | Long);
+  'ProveTimeout'?: (number | string | Long);
 }
 
 export interface InitTransactionRequest__Output {
   'fileSize': (Long);
-  'segmentsCount': (number);
+  'segmentsCount': (Long);
   'fileHash': (string);
-  'bid': (Long);
-  'timeperiod': (Long);
+  'bid': (string);
+  'userAddress': (string);
+  'timeStart': (Long);
+  'timeEnd': (Long);
+  'concludeTimeout': (Long);
+  'ProveTimeout': (Long);
 }

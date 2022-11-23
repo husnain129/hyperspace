@@ -10,7 +10,16 @@ export type Channels =
   | 'create-account'
   | 'get-balance'
   | 'browse-file'
-  | 'upload-click';
+  | 'upload-click'
+  | 'node-ping'
+  | 'node-init-tx'
+  | 'node-http-upload'
+  | 'node-compute-hash'
+  | 'node-hash-progress'
+  | 'file-progress'
+  | 'file-error'
+  | 'file-complete'
+  | 'contract-conclude-tx';
 
 contextBridge.exposeInMainWorld('electron', {
   ipcRenderer: {

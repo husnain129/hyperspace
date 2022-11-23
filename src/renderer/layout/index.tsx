@@ -21,6 +21,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     setUploading(true);
     const file = await window.electron.ipcRenderer.invoke('browse-file');
     console.log(file);
+
     setUploading(false);
     if (file != null) {
       setSelectedFile(file);
@@ -34,6 +35,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
       console.log('click');
     });
   }, []);
+
   return (
     <Flex w="100vw" h="100vh" flexDir="column">
       <Navbar onUploadClick={handleUploadClick} isUploading={isUploading} />
@@ -56,6 +58,11 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
           title="Upload File"
         >
           <UploadFile
+            onClose={() => {
+              setSelectedFile(null);
+              setShowModal(false);
+            }}
+            path={selectedFile?.path}
             ext={selectedFile?.ext}
             name={selectedFile?.name}
             size={selectedFile?.size}

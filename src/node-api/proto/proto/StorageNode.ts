@@ -1,4 +1,4 @@
-// Original file: ../storage-node-p1/proto/storage-node.proto
+// Original file: assets/storage-node.proto
 
 import type * as grpc from '@grpc/grpc-js'
 import type { MethodDefinition } from '@grpc/proto-loader'

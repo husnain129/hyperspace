@@ -2,8 +2,8 @@ import { ethers } from 'ethers';
 import FactoryABI from '../factory-abi';
 import StorageABI from '../storage-abi';
 
-const contractAddress = '0x5FbDB2315678afecb367f032d93F642f64180aa3';
-const providerAddress = 'http://127.0.0.1:8545/';
+const factoryContractAddress = '0xC6906Df3A9268729EDB78F8eF1E31F59b70DA857';
+const providerAddress = 'http://127.0.0.1:7545';
 
 // eslint-disable-next-line import/prefer-default-export
 export const ContractAPI = {
@@ -16,13 +16,48 @@ export const ContractAPI = {
   async getBalance(address: string) {
     return this.getProvider().getBalance(address);
   },
+  async concludeTransaction(
+    contractAddress: string,
+    privateKey: string,
+    wei: string,
+    data: {
+      userAddress: string;
+      merkleRootHash: string;
+      fileSize: number;
+      timerStart: number;
+      timerEnd: number;
+      proveTimeoutLength: number;
+      concludeTimeoutLength: number;
+      segmentsCount: number;
+      bidAmount: string;
+    }
+  ) {
+    const signer = new ethers.Wallet(privateKey, this.getProvider());
+    const nodeIfc = new ethers.utils.Interface(StorageABI);
+
+    const contract = new ethers.Contract(contractAddress, nodeIfc, signer);
+    const tx = await contract.concludeTransaction(
+      1,
+      data.userAddress,
+      ethers.utils.arrayify(`0x${data.merkleRootHash}`),
+      data.fileSize,
+      data.timerStart,
+      data.timerEnd,
+      data.proveTimeoutLength,
+      data.concludeTimeoutLength,
+      data.segmentsCount,
+      BigInt(data.bidAmount),
+      { value: BigInt(wei) }
+    );
+    return true;
+  },
   async getStorageNodesAddress() {
     console.log('Getting nodes');
     const ifc = new ethers.utils.Interface(FactoryABI);
     const nodeIfc = new ethers.utils.Interface(StorageABI);
 
     const factory = new ethers.Contract(
-      contractAddress,
+      factoryContractAddress,
       ifc,
       this.getProvider()
     );

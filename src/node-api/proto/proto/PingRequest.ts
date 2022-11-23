@@ -1,4 +1,4 @@
-// Original file: ../storage-node-p1/proto/storage-node.proto
+// Original file: assets/storage-node.proto
 
 import type { Long } from '@grpc/proto-loader';
 

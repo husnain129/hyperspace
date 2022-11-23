@@ -37,7 +37,7 @@ function GenericModal({
           <ModalFooter>
             {
               <HStack>
-                <Button colorScheme={'primary'} h="2rem">
+                {/* <Button colorScheme={'primary'} h="2rem">
                   Upload
                 </Button>
                 <Button
@@ -50,7 +50,7 @@ function GenericModal({
                   onClick={onClose}
                 >
                   Cancel
-                </Button>
+                </Button> */}
               </HStack>
             }
           </ModalFooter>

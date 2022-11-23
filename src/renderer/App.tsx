@@ -21,6 +21,8 @@ import AuthLayout from './layout/AuthLayout';
 import type { IAccount } from '../main/db-api';
 import AccountContextProvider from './contexts/AccountContext';
 import Account from './components/account/account';
+import FilesContextProvider from './contexts/FilesContext';
+import 'react-circular-progressbar/dist/styles.css';
 
 const Hello = () => {
   return (
@@ -77,8 +79,10 @@ export default function App() {
         <Loading />
       ) : (
         <AccountContextProvider account={account} setAccount={setAccount}>
-          {/* eslint-disable-next-line react/destructuring-assignment */}
-          {props.children}
+          <FilesContextProvider>
+            {/* eslint-disable-next-line react/destructuring-assignment */}
+            {props.children}
+          </FilesContextProvider>
         </AccountContextProvider>
       );
     },

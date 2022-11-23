@@ -29,6 +29,11 @@ import MenuBuilder from './menu';
 
 import { resolveHtmlPath } from './util';
 
+/**
+ * Used to abort the upload/download operation with the key
+ */
+const abortControllerMapping: Record<string, AbortController> = {};
+
 class AppUpdater {
   constructor() {
     log.transports.file.level = 'info';
@@ -66,6 +71,157 @@ ipcMain.handle('get-node-info', async (event, hostname) => {
   return stats;
 });
 
+ipcMain.handle(
+  'node-ping',
+  async (event, { host, fileSize, segmentsCount, timePeriod }) => {
+    const data = await NodeAPI.Ping(host, fileSize, segmentsCount, timePeriod);
+    return data;
+  }
+);
+
+ipcMain.handle('node-file-abort', (event, { fileKey }) => {
+  const c = abortControllerMapping[fileKey];
+  if (c) {
+    c.abort();
+    return true;
+  }
+  return false;
+});
+ipcMain.handle(
+  'node-compute-hash',
+  async (event, { filePath, segmentsCount }) => {
+    console.log('Getting root hash');
+    const hash = await NodeAPI.ComputeMerkleRootHash(
+      filePath,
+      segmentsCount,
+      (p) => {
+        mainWindow?.webContents.send('node-hash-progress', {
+          filePath,
+          progress: p,
+        });
+      }
+    );
+    return hash;
+  }
+);
+ipcMain.handle(
+  'node-http-upload',
+  (event, { url, filePath, token, fileKey }) => {
+    const onProgress = (p: number) => {
+      mainWindow?.webContents.send('file-progress', {
+        fileKey,
+        progress: p,
+      });
+    };
+    const onError = (err: Error) => {
+      mainWindow?.webContents.send('file-error', {
+        fileKey,
+        name: err.name,
+        msg: err.message,
+      });
+    };
+    const onComplete = () => {
+      mainWindow?.webContents.send('file-complete', { fileKey });
+    };
+
+    const controller = NodeAPI.HTTPUploadFile(
+      filePath,
+      url,
+      token,
+      onProgress,
+      onError,
+      onComplete,
+      fileKey
+    );
+    abortControllerMapping[fileKey] = controller;
+
+    return fileKey;
+  }
+);
+
+ipcMain.handle(
+  'node-init-tx',
+  async (
+    event,
+    {
+      host,
+      userAddress,
+      fileSize,
+      segmentsCount,
+      timeStart,
+      timeEnd,
+      fileHash,
+      bid,
+    }
+  ) => {
+    console.log('Call');
+    const token = await NodeAPI.InitTransaction(
+      host,
+      userAddress,
+      bid,
+      fileHash,
+      fileSize,
+      segmentsCount,
+      timeStart,
+      timeEnd
+    );
+    return token;
+  }
+);
+
+export interface IPCcontractConcludeTx {
+  contractAddress: string;
+  privateKey: string;
+  weiValue: string;
+  userAddress: string;
+  bidAmount: string;
+  fileSize: number;
+  merkleRootHash: string;
+  segmentsCount: number;
+  timerStart: number;
+  timerEnd: number;
+  concludeTimeoutLength: number;
+  proveTimeoutLength: number;
+}
+
+ipcMain.handle(
+  'contract-conclude-tx',
+  async (
+    event,
+    {
+      contractAddress,
+      privateKey,
+      weiValue,
+      userAddress,
+      bidAmount,
+      fileSize,
+      merkleRootHash,
+      segmentsCount,
+      timerStart,
+      timerEnd,
+      concludeTimeoutLength,
+      proveTimeoutLength,
+    }: IPCcontractConcludeTx
+  ) => {
+    console.log('ContractAPI.concludeTransaction');
+    return ContractAPI.concludeTransaction(
+      contractAddress,
+      privateKey,
+      weiValue,
+      {
+        merkleRootHash,
+        fileSize,
+        segmentsCount,
+        timerStart,
+        timerEnd,
+        bidAmount,
+        userAddress,
+        concludeTimeoutLength,
+        proveTimeoutLength,
+      }
+    );
+  }
+);
 ipcMain.handle('create-account', async (event, account: IAccount) => {
   await DB_API.createAccount(account);
 });
@@ -78,7 +234,7 @@ ipcMain.handle('get-account', async (event, hostname) => {
 });
 ipcMain.handle('browse-file', async (event) => {
   const selectedPath = dialog.showOpenDialogSync(mainWindow!, {});
-  if (!selectedPath || selectedPath.length == 0) return null;
+  if (!selectedPath || selectedPath.length === 0) return null;
   const { name, ext } = path.parse(selectedPath[0]);
 
   const stats = fs.statSync(selectedPath[0]);
@@ -120,87 +276,19 @@ const installExtensions = async () => {
     .catch(console.log);
 };
 
-const { TouchBarLabel, TouchBarButton, TouchBarSpacer } = TouchBar;
+const { TouchBarButton } = TouchBar;
 
-let spinning = false;
-
-// Reel labels
-const reel1 = new TouchBarButton({});
-const reel2 = new TouchBarLabel({});
-const reel3 = new TouchBarLabel({});
-
-// Spin result label
-const result = new TouchBarLabel({});
-
-// Spin button
-const spin = new TouchBarButton({
+const BarUploadButton = new TouchBarButton({
   label: '⇪ Upload',
   backgroundColor: '#3a4780',
   click: () => {
     mainWindow?.webContents.send('upload-click');
-    // ipcRenderer.emit('upload-click');
-    // // Ignore clicks if already spinning
-    // if (spinning) {
-    //   return;
-    // }
-
-    // spinning = true;
-    // result.label = '';
-
-    // let timeout = 10;
-    // const spinLength = 4 * 1000; // 4 seconds
-    // const startTime = Date.now();
-
-    // const spinReels = () => {
-    //   updateReels();
-
-    //   if (Date.now() - startTime >= spinLength) {
-    //     finishSpin();
-    //   } else {
-    //     // Slow down a bit on each spin
-    //     timeout *= 1.1;
-    //     setTimeout(spinReels, timeout);
-    //   }
-    // };
-
-    // spinReels();
   },
 });
 
-const getRandomValue = () => {
-  const values = ['🍒', '💎', '7️⃣', '🍊', '🔔', '⭐', '🍇', '🍀'];
-  return values[Math.floor(Math.random() * values.length)];
-};
-
-const updateReels = () => {
-  reel1.label = getRandomValue();
-  reel2.label = getRandomValue();
-  reel3.label = getRandomValue();
-};
-
-const finishSpin = () => {
-  const uniqueValues = new Set([reel1.label, reel2.label, reel3.label]).size;
-  if (uniqueValues === 1) {
-    // All 3 values are the same
-    result.label = '💰 Jackpot!';
-    result.textColor = '#FDFF00';
-  } else if (uniqueValues === 2) {
-    // 2 values are the same
-    result.label = '😍 Winner!';
-    result.textColor = '#FDFF00';
-  } else {
-    // No values are the same
-    result.label = '🙁 Spin Again';
-    result.textColor = null;
-  }
-  spinning = false;
-};
-
 const touchBar = new TouchBar({
-  items: [spin],
+  items: [BarUploadButton],
 });
-
-let window;
 
 const createWindow = async () => {
   if (isDebug) {
