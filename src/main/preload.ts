@@ -19,7 +19,13 @@ export type Channels =
   | 'file-progress'
   | 'file-error'
   | 'file-complete'
-  | 'contract-conclude-tx';
+  | 'contract-conclude-tx'
+  | 'db-insert-file'
+  | 'get-all-files'
+  | 'get-info'
+  | 'node-contract-info'
+  | 'node-http-download'
+  | 'open-finder';
 
 contextBridge.exposeInMainWorld('electron', {
   ipcRenderer: {

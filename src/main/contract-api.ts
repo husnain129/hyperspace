@@ -79,4 +79,19 @@ export const ContractAPI = {
     );
     return nodes;
   },
+  async getStorageNodeInfo(contractAddress: string) {
+    console.log('Getting node info');
+    const nodeIfc = new ethers.utils.Interface(StorageABI);
+
+    const contract = new ethers.Contract(
+      contractAddress,
+      nodeIfc,
+      new ethers.providers.JsonRpcProvider(providerAddress)
+    );
+
+    const host: string = await contract.HOST();
+    const tlsCert: string = await contract.TLSCert();
+    const owner: string = await contract.owner();
+    return { host, tlsCert, owner, address: contractAddress };
+  },
 };

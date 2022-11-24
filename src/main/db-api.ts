@@ -3,6 +3,7 @@ import sqlite3 from 'sqlite3';
 import * as sqlite from 'sqlite';
 import path from 'path';
 import fs from 'fs';
+import { FileStatus, IFile } from './IFile';
 
 const dbFile = path.join(__dirname, '../../assets', 'account.dat');
 
@@ -42,6 +43,99 @@ const DB_API = {
     console.log(res);
     if (res === undefined) return null;
     return res;
+  },
+  async getAllFiles(): Promise<IFile[]> {
+    await this.connect();
+
+    const rows = await this.db!.all<
+      Array<{
+        file_key: string;
+        bid: string;
+        name: string;
+        contract_address: string;
+        file_size: number;
+        merkle_root: string;
+        segments: number;
+        timer_start: number;
+        timer_end: number;
+        time_created: number;
+        last_verified: number;
+        conclude_timeout: number;
+        prove_timeout: number;
+        sha256: '';
+        created_at: string;
+      }>
+    >(`SELECT * from files`);
+    console.log('>rows');
+    console.log(rows);
+
+    return rows.map((r) => ({
+      fileKey: r.file_key,
+      bid: r.bid,
+      concludeTimeoutLength: r.conclude_timeout,
+      fileMerkleRootHash: r.merkle_root,
+      fileSize: r.file_size,
+      lastVerified: r.last_verified,
+      name: r.name,
+      progress: 0,
+      proveTimeoutLength: r.prove_timeout,
+      segmentsCount: r.segments,
+      sha256: r.sha256,
+      status: FileStatus.IDLE,
+      storageContractAddress: r.contract_address,
+      timeCreated: r.time_created,
+      timerEnd: r.timer_end,
+      timerStart: r.timer_start,
+    }));
+  },
+  async insertFile(file: IFile) {
+    await this.connect();
+
+    await this.db!.exec(`CREATE TABLE IF NOT EXISTS files (
+      file_key VARCHAR(256) PRIMARY KEY UNIQUE,
+      bid varchar(256),
+
+      name VARCHAR(1024),
+      contract_address VARCHAR(256),
+      file_size int(11),
+      merkle_root VARCHAR(256),
+      segments int(11),
+
+      timer_start int(11),
+      timer_end int(11),
+
+      time_created int(11),
+      last_verified int(11),
+
+      conclude_timeout int(11),
+      prove_timeout int(11),
+      sha256 VARCHAR(256),
+
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`);
+
+    await this.db!.run(
+      `INSERT INTO files (
+      file_key,bid,name,contract_address,file_size,
+      merkle_root,segments,timer_start,timer_end,
+      time_created, last_verified, conclude_timeout,
+      prove_timeout,sha256
+    ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      file.fileKey,
+      file.bid,
+      file.name,
+      file.storageContractAddress,
+      file.fileSize,
+      file.fileMerkleRootHash,
+      file.segmentsCount,
+      file.timerStart,
+      file.timerEnd,
+      file.timeCreated,
+      file.lastVerified,
+      file.concludeTimeoutLength,
+      file.proveTimeoutLength,
+      file.sha256
+    );
   },
   async createAccount(account: IAccount) {
     await this.connect();

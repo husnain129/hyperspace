@@ -1,4 +1,4 @@
-import { IAccount } from 'main/db-api';
+import type { IAccount } from 'main/db-api';
 import React, { createContext } from 'react';
 
 interface IAccountContext {

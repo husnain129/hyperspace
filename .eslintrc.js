@@ -13,6 +13,7 @@ module.exports = {
     'react/prop-types': 'warn',
     'no-console': 'off',
     'promise/always-return': 'off',
+    'promise/catch-or-return': 'warn',
   },
   parserOptions: {
     ecmaVersion: 2020,

@@ -3,14 +3,18 @@
 import * as grpc from '@grpc/grpc-js';
 import * as protoLoader from '@grpc/proto-loader';
 import path from 'path';
-import fs from 'fs';
+import fs, { createWriteStream } from 'fs';
 import axios from 'axios';
 import FormData from 'form-data';
 import { MerkleTree } from 'merkletreejs';
 import { ethers } from 'ethers';
 import crypto from 'crypto';
 import { ContractAPI } from 'main/contract-api';
+import { promisify } from 'util';
+import { finished } from 'stream';
 import { ProtoGrpcType } from './proto/storage-node';
+
+const streamFinished = promisify(finished);
 
 const protoFile = path.join(__dirname, '../../assets', 'storage-node.proto');
 // const f = fs.readFileSync(protoFile);
@@ -214,6 +218,51 @@ const NodeAPI = {
       // eslint-disable-next-line promise/always-return
       .then(() => {
         console.log('Upload Complete');
+        onComplete();
+      })
+      .catch((er) => {
+        console.warn(er);
+
+        onError(er);
+      });
+
+    return controller;
+  },
+  HTTPDownloadFile(
+    url: string,
+    token: string,
+    fileKey: string,
+    dest: string,
+    progressCallback: (progress: number) => void,
+    onError: (err: Error) => void,
+    onComplete: () => void
+  ) {
+    const controller = new AbortController();
+    const writeStream = createWriteStream(dest);
+
+    axios
+      .get(url, {
+        signal: controller.signal,
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        responseType: 'stream',
+        onDownloadProgress(progressEvent) {
+          if (!progressCallback) return;
+          if (progressEvent.total === -1) progressCallback(-1);
+          const percentCompleted = Math.round(
+            (progressEvent.loaded * 100) / (progressEvent.total || 1)
+          );
+          return progressCallback(percentCompleted);
+        },
+      })
+      // eslint-disable-next-line promise/always-return
+      .then((response) => {
+        response.data.pipe(writeStream);
+        return streamFinished(writeStream);
+      })
+      .then(() => {
+        console.log('Download Complete');
         onComplete();
       })
       .catch((er) => {

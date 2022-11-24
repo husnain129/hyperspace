@@ -22,6 +22,7 @@ import { autoUpdater } from 'electron-updater';
 import { ethers } from 'ethers';
 import fs from 'fs';
 import path from 'path';
+import { IFile } from 'main/IFile';
 import NodeAPI from '../node-api/node-api';
 import { ContractAPI } from './contract-api';
 import DB_API, { IAccount } from './db-api';
@@ -71,6 +72,10 @@ ipcMain.handle('get-node-info', async (event, hostname) => {
   return stats;
 });
 
+ipcMain.handle('get-all-files', async (event) => {
+  const files = await DB_API.getAllFiles();
+  return files;
+});
 ipcMain.handle(
   'node-ping',
   async (event, { host, fileSize, segmentsCount, timePeriod }) => {
@@ -111,6 +116,7 @@ ipcMain.handle(
       mainWindow?.webContents.send('file-progress', {
         fileKey,
         progress: p,
+        operation: 'UPLOAD',
       });
     };
     const onError = (err: Error) => {
@@ -118,10 +124,14 @@ ipcMain.handle(
         fileKey,
         name: err.name,
         msg: err.message,
+        operation: 'UPLOAD',
       });
     };
     const onComplete = () => {
-      mainWindow?.webContents.send('file-complete', { fileKey });
+      mainWindow?.webContents.send('file-complete', {
+        fileKey,
+        operation: 'UPLOAD',
+      });
     };
 
     const controller = NodeAPI.HTTPUploadFile(
@@ -138,6 +148,50 @@ ipcMain.handle(
     return fileKey;
   }
 );
+
+ipcMain.handle('node-http-download', (event, { url, token, fileKey, name }) => {
+  const dest = path.join(
+    process.env.HOME || process.env.USERPROFILE || './',
+    'downloads/',
+    name
+  );
+
+  const onProgress = (p: number) => {
+    mainWindow?.webContents.send('file-progress', {
+      fileKey,
+      progress: p,
+      operation: 'DOWNLOAD',
+    });
+  };
+  const onError = (err: Error) => {
+    mainWindow?.webContents.send('file-error', {
+      fileKey,
+      name: err.name,
+      msg: err.message,
+      operation: 'DOWNLOAD',
+    });
+  };
+  const onComplete = () => {
+    mainWindow?.webContents.send('file-complete', {
+      fileKey,
+      dest,
+      operation: 'DOWNLOAD',
+    });
+  };
+
+  const controller = NodeAPI.HTTPDownloadFile(
+    url,
+    token,
+    fileKey,
+    dest,
+    onProgress,
+    onError,
+    onComplete
+  );
+  abortControllerMapping[fileKey] = controller;
+
+  return fileKey;
+});
 
 ipcMain.handle(
   'node-init-tx',
@@ -225,6 +279,11 @@ ipcMain.handle(
 ipcMain.handle('create-account', async (event, account: IAccount) => {
   await DB_API.createAccount(account);
 });
+
+ipcMain.handle('open-finder', async (event, filePath: string) => {
+  shell.showItemInFolder(filePath);
+});
+
 ipcMain.handle('get-balance', async (event, addr: string) => {
   return ContractAPI.getBalance(addr);
 });
@@ -232,6 +291,11 @@ ipcMain.handle('get-account', async (event, hostname) => {
   const account = await DB_API.getAccount();
   return account;
 });
+ipcMain.handle('db-insert-file', async (event, file: IFile) => {
+  await DB_API.insertFile(file);
+  return true;
+});
+
 ipcMain.handle('browse-file', async (event) => {
   const selectedPath = dialog.showOpenDialogSync(mainWindow!, {});
   if (!selectedPath || selectedPath.length === 0) return null;
@@ -249,6 +313,9 @@ ipcMain.handle('get-nodes', async (event, arg) => {
   //   event.reply('get-nodes', nodes);
   // })
   // .catch((er) => console.log(er));
+});
+ipcMain.handle('node-contract-info', async (event, address) => {
+  return ContractAPI.getStorageNodeInfo(address);
 });
 
 if (process.env.NODE_ENV === 'production') {

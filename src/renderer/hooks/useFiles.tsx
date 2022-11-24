@@ -2,7 +2,7 @@ import { useContext } from 'react';
 import { FilesContext } from 'renderer/contexts/FilesContext';
 
 export default function useFiles() {
-  const { files, isLoading, uploadFile, computeMerkleRootHash } =
+  const { files, isLoading, uploadFile, computeMerkleRootHash, downloadFile } =
     useContext(FilesContext);
 
   return {
@@ -10,5 +10,6 @@ export default function useFiles() {
     isLoading,
     uploadFile,
     computeMerkleRootHash,
+    downloadFile,
   };
 }
