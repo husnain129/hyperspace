@@ -42,7 +42,8 @@ const Auth = () => {
             <Button
               onClick={() => navigate('/auth/load-account')}
               variant="ghost"
-              outline="1px solid #4859a0"
+              outline="1px solid var(--chakra-colors-gray-500)"
+              color="gray.600"
             >
               Load existing account
             </Button>
@@ -74,7 +75,11 @@ export default function Index(props: {
         path="/load-account"
         element={
           <AuthLayout>
-            <AlreadyHaveAnAccount />
+            <AlreadyHaveAnAccount
+              onAccountLoaded={(account: IAccount) =>
+                props.onAccountLoaded(account)
+              }
+            />
           </AuthLayout>
         }
       />

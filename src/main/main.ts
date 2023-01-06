@@ -20,15 +20,22 @@ import {
 import log from 'electron-log';
 import { autoUpdater } from 'electron-updater';
 import { ethers } from 'ethers';
-import fs from 'fs';
+import fs, { createReadStream, createWriteStream } from 'fs';
 import path from 'path';
 import { IFile } from 'main/IFile';
+import { format } from 'date-fns';
+import { pipeline } from 'stream/promises';
+import { randomBytes, createCipheriv, createDecipheriv } from 'crypto';
+import { promisify } from 'util';
+import { sha256 } from 'ethers/lib/utils';
 import NodeAPI from '../node-api/node-api';
 import { ContractAPI } from './contract-api';
-import DB_API, { IAccount } from './db-api';
+import DB_API, { IAccount, LoadAccountInfoFromFile } from './db-api';
 import MenuBuilder from './menu';
 
 import { resolveHtmlPath } from './util';
+
+export const globalIV = 'a0d336ccd2aee9a6';
 
 /**
  * Used to abort the upload/download operation with the key
@@ -45,6 +52,13 @@ class AppUpdater {
 
 let mainWindow: BrowserWindow | null = null;
 
+const RESOURCES_PATH = app.isPackaged
+  ? path.join(process.resourcesPath, 'assets')
+  : path.join(__dirname, '../../assets');
+
+const getAssetPath = (...paths: string[]): string => {
+  return path.join(RESOURCES_PATH, ...paths);
+};
 ipcMain.on('ipc-example', async (event, arg) => {
   console.log('ipc-example', arg);
   event.reply('ipc-example', 'pong');
@@ -58,7 +72,7 @@ ipcMain.on('createNewUserFile', async (event, arg: { username: string }) => {
     privateKey,
     publicKey,
   });
-  fs.writeFileSync('./vallet.json', data);
+  fs.writeFileSync('./Wallet.json', data);
   event.reply('createNewUserFile', 'File created');
 });
 
@@ -68,6 +82,7 @@ ipcMain.on('get-data', (event, arg) => {
 });
 
 ipcMain.handle('get-node-info', async (event, hostname) => {
+  console.log('get-node-info::', hostname);
   const stats = await NodeAPI.GetStats(hostname);
   return stats;
 });
@@ -149,49 +164,84 @@ ipcMain.handle(
   }
 );
 
-ipcMain.handle('node-http-download', (event, { url, token, fileKey, name }) => {
-  const dest = path.join(
-    process.env.HOME || process.env.USERPROFILE || './',
-    'downloads/',
-    name
-  );
+ipcMain.handle(
+  'node-http-download',
+  (event, { url, token, fileKey, name, decrypt }) => {
+    const dest = path.join(
+      process.env.HOME || process.env.USERPROFILE || './',
+      'downloads/',
+      name
+    );
 
-  const onProgress = (p: number) => {
-    mainWindow?.webContents.send('file-progress', {
-      fileKey,
-      progress: p,
-      operation: 'DOWNLOAD',
-    });
-  };
-  const onError = (err: Error) => {
-    mainWindow?.webContents.send('file-error', {
-      fileKey,
-      name: err.name,
-      msg: err.message,
-      operation: 'DOWNLOAD',
-    });
-  };
-  const onComplete = () => {
-    mainWindow?.webContents.send('file-complete', {
+    const onProgress = (p: number) => {
+      mainWindow?.webContents.send('file-progress', {
+        fileKey,
+        progress: p,
+        operation: 'DOWNLOAD',
+      });
+    };
+    const onError = (err: Error) => {
+      mainWindow?.webContents.send('file-error', {
+        fileKey,
+        name: err.name,
+        msg: err.message,
+        operation: 'DOWNLOAD',
+      });
+    };
+    const onComplete = () => {
+      if (decrypt && decrypt.key) {
+        const encKey = sha256(decrypt.key).slice(2).slice(32);
+
+        const iv = globalIV;
+        const nPath = dest.concat('.dec');
+        pipeline(
+          createReadStream(dest),
+          createDecipheriv('aes-256-cbc', encKey, iv),
+          createWriteStream(nPath)
+        )
+          .then(() => {
+            fs.rmSync(dest);
+            fs.renameSync(nPath, dest);
+
+            mainWindow?.webContents.send('file-complete', {
+              fileKey,
+              dest,
+              operation: 'DOWNLOAD',
+            });
+          })
+          .catch((er) => {
+            console.warn(er);
+
+            mainWindow?.webContents.send('file-error', {
+              fileKey,
+              name: 'Decryption Failed',
+              msg: 'Failed to decrypt file',
+              operation: 'DOWNLOAD',
+            });
+          });
+      } else {
+        mainWindow?.webContents.send('file-complete', {
+          fileKey,
+          dest,
+          operation: 'DOWNLOAD',
+        });
+      }
+    };
+
+    const controller = NodeAPI.HTTPDownloadFile(
+      url,
+      token,
       fileKey,
       dest,
-      operation: 'DOWNLOAD',
-    });
-  };
+      onProgress,
+      onError,
+      onComplete
+    );
+    abortControllerMapping[fileKey] = controller;
 
-  const controller = NodeAPI.HTTPDownloadFile(
-    url,
-    token,
-    fileKey,
-    dest,
-    onProgress,
-    onError,
-    onComplete
-  );
-  abortControllerMapping[fileKey] = controller;
-
-  return fileKey;
-});
+    return { fileKey, dest };
+  }
+);
 
 ipcMain.handle(
   'node-init-tx',
@@ -258,7 +308,7 @@ ipcMain.handle(
     }: IPCcontractConcludeTx
   ) => {
     console.log('ContractAPI.concludeTransaction');
-    return ContractAPI.concludeTransaction(
+    const res = ContractAPI.concludeTransaction(
       contractAddress,
       privateKey,
       weiValue,
@@ -274,16 +324,70 @@ ipcMain.handle(
         proveTimeoutLength,
       }
     );
+
+    return res;
   }
 );
 ipcMain.handle('create-account', async (event, account: IAccount) => {
+  console.log('Creating account');
   await DB_API.createAccount(account);
+  console.log('Account created');
 });
 
 ipcMain.handle('open-finder', async (event, filePath: string) => {
   shell.showItemInFolder(filePath);
 });
 
+ipcMain.handle('remove-account', async (event) => {
+  const id = dialog.showMessageBoxSync(mainWindow!, {
+    message:
+      "Make sure you've exported your account. You can't undo this operation.",
+    buttons: ['Cancel', 'Remove Account'],
+    type: 'warning',
+    cancelId: 0,
+    defaultId: 0,
+  });
+  if (id !== 1) {
+    return false;
+  }
+  fs.rmSync(path.join(getAssetPath(), 'account.dat'));
+  return true;
+});
+
+ipcMain.handle('browse-load-account', async (event) => {
+  const f = dialog.showOpenDialogSync(mainWindow!, {
+    filters: [{ name: 'Hyperspace Account', extensions: ['hyperspace'] }],
+  });
+  if (!f || !f[0]) return null;
+
+  return { path: f[0], account: await LoadAccountInfoFromFile(f[0]) };
+});
+
+ipcMain.handle('load-account-from-file', async (event, file) => {
+  const dest = path.join(getAssetPath(), 'account.dat');
+
+  if (!fs.existsSync(file)) throw new Error("file doesn't exists");
+  if (fs.existsSync(dest)) {
+    fs.rmSync(dest);
+  }
+  fs.copyFileSync(file, dest);
+  if (!fs.existsSync(dest)) throw new Error('failed to copy account file');
+});
+
+ipcMain.handle('export-account', async (event, prefix) => {
+  const dir = dialog.showOpenDialogSync(mainWindow!, {
+    properties: ['openDirectory'],
+    message: 'Select directory',
+  });
+  if (!dir || !dir[0]) return;
+  const dest = path.join(
+    dir[0],
+    `${prefix}-account-${format(new Date(), 'dd-mm-yyyy-hh-mm-ss')}.hyperspace`
+  );
+  fs.copyFileSync(getAssetPath('account.dat'), dest);
+
+  shell.showItemInFolder(dest);
+});
 ipcMain.handle('get-balance', async (event, addr: string) => {
   return ContractAPI.getBalance(addr);
 });
@@ -316,6 +420,26 @@ ipcMain.handle('get-nodes', async (event, arg) => {
 });
 ipcMain.handle('node-contract-info', async (event, address) => {
   return ContractAPI.getStorageNodeInfo(address);
+});
+ipcMain.handle('encrypt-file', async (event, { filePath, dest, key }) => {
+  const encKey = sha256(key).slice(2).slice(32);
+  console.log('ENC');
+  console.log(encKey);
+
+  const iv = globalIV;
+
+  return new Promise((resolve, reject) => {
+    pipeline(
+      createReadStream(filePath),
+      createCipheriv('aes-256-cbc', encKey, iv),
+      createWriteStream(dest)
+    )
+      .then(() => {
+        const stats = fs.statSync(dest);
+        resolve({ path: dest, size: stats.size });
+      })
+      .catch((er) => reject(er?.message || 'failed to encrypt'));
+  });
 });
 
 if (process.env.NODE_ENV === 'production') {
@@ -361,14 +485,6 @@ const createWindow = async () => {
   if (isDebug) {
     await installExtensions();
   }
-
-  const RESOURCES_PATH = app.isPackaged
-    ? path.join(process.resourcesPath, 'assets')
-    : path.join(__dirname, '../../assets');
-
-  const getAssetPath = (...paths: string[]): string => {
-    return path.join(RESOURCES_PATH, ...paths);
-  };
 
   mainWindow = new BrowserWindow({
     show: false,

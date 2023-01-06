@@ -95,7 +95,7 @@ const NodeAPI = {
           segmentsCount,
           timeStart,
           timeEnd,
-          concludeTimeout: 30,
+          concludeTimeout: 60 * 60 * 60, // 1 hour
           ProveTimeout: 30,
         },
         (err, resp) => {

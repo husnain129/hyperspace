@@ -1,3 +1,5 @@
+/* eslint-disable promise/catch-or-return */
+/* eslint-disable promise/no-nesting */
 import { ethers } from 'ethers';
 import type { IPCcontractConcludeTx } from 'main/main';
 import React, { createContext, useCallback, useEffect, useState } from 'react';
@@ -13,10 +15,16 @@ interface IFilesContext {
   files: IFile[];
   isLoading: boolean;
   uploadFile: (args: UploadFileArgs) => Promise<string>;
-  downloadFile: (fileKey: string) => Promise<string>;
+  downloadFile: (fileKey: string, decKey: string) => Promise<string>;
+  encryptFile: (
+    filePath: string,
+    dest: string,
+    key: string
+  ) => Promise<{ path: string; size: number }>;
 
   computeMerkleRootHash: (filePath: string) => Promise<string>;
 }
+
 export function computeFileKey(
   userAddress: string,
   fileMerkleRootHash: string
@@ -41,8 +49,14 @@ interface UploadFileArgs {
   bid: string;
   merkleRootHash: string;
   storageNodeAddress: string;
+  encrypted: boolean;
 }
-
+export interface UploadFileCallbacks {
+  onUploadProgress: (p: number) => void;
+  onUploadComplete: () => void;
+  onConcludeComplete: () => void;
+  onError: (err: string) => void;
+}
 export default function FilesContextProvider({
   children,
 }: {
@@ -50,6 +64,9 @@ export default function FilesContextProvider({
 }) {
   const [files, setFiles] = useState<IFile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [uploadCallbacks, setUploadCallbacks] = useState<
+    Array<{ fileKey: string; cbs: UploadFileCallbacks }>
+  >([]);
   const { account } = useAccount();
 
   const computeRootHash = async (filePath: string) => {
@@ -62,14 +79,31 @@ export default function FilesContextProvider({
     );
     return hash;
   };
+  const encryptFile = async (filePath: string, dest: string, key: string) => {
+    const res = await window.electron.ipcRenderer.invoke('encrypt-file', {
+      filePath,
+      key,
+      dest,
+    });
+    return { path: res.path, size: res.size };
+  };
 
   /**
    * Returns fileKey
    */
   const uploadFile = useCallback(
-    async (args: UploadFileArgs) => {
+    async (args: UploadFileArgs, callbacks?: UploadFileCallbacks) => {
       // console.log('hash:', hash);
-
+      // eslint-disable-next-line no-undef-init
+      // let unregisterCallbacks: () => void | undefined = undefined;
+      // if (callbacks) {
+      //   setUploadCallbacks((c) => {
+      //     unregisterCallbacks = () => {
+      //       setUploadCallbacks((cbs) => cbs.filter((_, i) => i !== c.length));
+      //     };
+      //     return c.concat({ fileKey: args.merkleRootHash, cbs: callbacks });
+      //   });
+      // }
       const { jwt: token, httpURL }: { jwt: string; httpURL: string } =
         await window.electron.ipcRenderer.invoke('node-init-tx', {
           userAddress: account.address,
@@ -84,11 +118,13 @@ export default function FilesContextProvider({
       console.log('Token:', token);
       const fileKey = computeFileKey(account.address, args.merkleRootHash);
 
+      let p = args.filePath.split(/[\\/]/).pop();
+      if (args.encrypted) p = p.slice(0, -4); // remove enc
       setFiles((f) =>
         f.concat([
           {
             fileKey,
-            name: args.filePath.split(/[\\/]/).pop() || args.filePath || 'NA',
+            name: p || args.filePath || 'NA',
             status: FileStatus.UPLOADING,
             bid: args.bid,
             fileMerkleRootHash: args.merkleRootHash,
@@ -101,8 +137,9 @@ export default function FilesContextProvider({
             timerEnd: args.timeEnd,
             timerStart: args.timeStart,
             fileSize: args.fileSize,
-            concludeTimeoutLength: 30,
+            concludeTimeoutLength: 60 * 60 * 60,
             proveTimeoutLength: 30,
+            isEncrypted: args.encrypted,
           },
         ])
       );
@@ -115,12 +152,13 @@ export default function FilesContextProvider({
       });
 
       console.log('Key:', fileKey);
+
       return fileKey;
     },
     [account.address]
   );
   const downloadFile = useCallback(
-    async (fileKey: string): Promise<string> => {
+    async (fileKey: string, decKey: string): Promise<string> => {
       const fIndex = files.findIndex((f) => f.fileKey === fileKey);
       if (fIndex < 0) throw new Error("file doesn't exists");
       const file = files[fIndex];
@@ -136,12 +174,21 @@ export default function FilesContextProvider({
       let { host }: { host: string } = storageContract;
       console.log('>URL', host);
       host = host.replace('8000', '5555');
-      await window.electron.ipcRenderer.invoke('node-http-download', {
-        url: `http://${host}/get/${fileKey}`,
-        token: '',
-        name: file.name,
-        fileKey,
-      });
+      const { dest } = await window.electron.ipcRenderer.invoke(
+        'node-http-download',
+        {
+          url: `http://${host}/get/${fileKey}`,
+          token: '',
+          name: file.name,
+          fileKey,
+          decrypt: file.isEncrypted
+            ? {
+                key: decKey,
+              }
+            : undefined,
+        }
+      );
+      console.log('>DEST:', dest);
 
       setFiles((f) =>
         f.map((fl) =>
@@ -188,6 +235,17 @@ export default function FilesContextProvider({
       }
     );
 
+    const unsubFileError = window.electron.ipcRenderer.on(
+      'file-error',
+
+      ({ fileKey, operation }: any) => {
+        if (operation === 'UPLOAD') {
+          // upload failed
+          setFiles((_files) => _files.filter((f, i) => f.fileKey !== fileKey));
+        }
+      }
+    );
+
     const unsubUploadComplete = window.electron.ipcRenderer.on(
       'file-complete',
       ({ fileKey, ...args }: any) => {
@@ -215,10 +273,16 @@ export default function FilesContextProvider({
               timerStart: file.timerStart,
               userAddress: account.address,
             };
+
+            setFiles((_files) =>
+              _files.map((f, i) =>
+                i !== fileIndex ? f : { ...f, status: FileStatus.CONCLUDING }
+              )
+            );
             window.electron.ipcRenderer
               .invoke('contract-conclude-tx', params)
               .then(() => {
-                console.log('>Conclude file: ', fileKey);
+                console.log('>Concluded file: ', fileKey);
 
                 setFiles((_files) =>
                   _files.map((f, i) =>
@@ -233,6 +297,12 @@ export default function FilesContextProvider({
                   .catch((er) => {
                     console.log('insertion error');
                     console.warn(er);
+                    window.electron.ipcRenderer.sendMessage('file-error', [
+                      {
+                        fileKey,
+                        operation: 'UPLOAD',
+                      },
+                    ]);
                   });
               })
 
@@ -241,12 +311,6 @@ export default function FilesContextProvider({
 
                 console.warn(er);
               });
-
-            setFiles((_files) =>
-              _files.map((f, i) =>
-                i !== fileIndex ? f : { ...f, status: FileStatus.CONCLUDING }
-              )
-            );
           } else if (file.status === FileStatus.DOWNLOADING) {
             setTimeout(() => {
               // delay for humans -_-
@@ -300,6 +364,7 @@ export default function FilesContextProvider({
     return () => {
       if (unsubUploadComplete) unsubUploadComplete();
       if (unsubProgress) unsubProgress();
+      if (unsubFileError) unsubFileError();
     };
   }, [files, account]);
 
@@ -311,6 +376,7 @@ export default function FilesContextProvider({
         uploadFile,
         computeMerkleRootHash: computeRootHash,
         downloadFile,
+        encryptFile,
       }}
     >
       {children}

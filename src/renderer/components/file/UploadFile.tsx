@@ -10,9 +10,13 @@
 import {
   Box,
   Button,
+  Checkbox,
+  CircularProgress,
+  CircularProgressLabel,
   Divider,
   Flex,
   FormControl,
+  FormHelperText,
   FormLabel,
   HStack,
   Input,
@@ -34,9 +38,12 @@ import prettyBytes from 'pretty-bytes';
 import { useCallback, useEffect, useState } from 'react';
 import { CircularProgressbar } from 'react-circular-progressbar';
 import toast from 'react-hot-toast';
-import { BiCheck } from 'react-icons/bi';
+import { BiArrowToRight, BiCheck } from 'react-icons/bi';
 import { BsFileEarmarkFill } from 'react-icons/bs';
+import { HiArrowRight } from 'react-icons/hi';
 import { IoReloadOutline, IoWarning } from 'react-icons/io5';
+import { MdArrowRight, MdKeyboardArrowRight } from 'react-icons/md';
+import useAccount from 'renderer/hooks/useAccount';
 import useFiles from 'renderer/hooks/useFiles';
 import BladeSpinner from '../blade-spinner/BladeSpinner';
 import { MTD } from '../nodes/nodes';
@@ -75,9 +82,16 @@ const UploadFile = (props: {
   const [list, setList] = useState<Array<IList>>([]);
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
-
+  const [useEncryption, setUseEncryption] = useState(false);
+  const { account } = useAccount();
   const [stage, setStage] = useState<
-    'DURATION' | 'NODE_SELECTION' | 'HASHING' | 'UPLOADING' | 'COMPLETE'
+    | 'DURATION'
+    | 'NODE_SELECTION'
+    | 'ENCRYPTING'
+    | 'HASHING'
+    | 'UPLOADING'
+    | 'CONCLUDING'
+    | 'COMPLETE'
   >('DURATION');
 
   const fetchNodesData = useCallback(
@@ -174,11 +188,32 @@ const UploadFile = (props: {
 
   const [hashProgress, setHashProgress] = useState(0);
 
+  const { uploadFile, computeMerkleRootHash, encryptFile } = useFiles();
+
+  const [filePath, setFilePath] = useState(props.path);
+  const [fileSize, setFileSize] = useState(props.size);
+
+  const handleDurationNext = async () => {
+    setStage('ENCRYPTING');
+    if (useEncryption) {
+      const newPath = props.path.concat('.enc');
+      try {
+        const res = await encryptFile(props.path, newPath, account.private_key);
+        setFilePath(newPath);
+        setFileSize(res.size);
+        setStage('NODE_SELECTION');
+      } catch (er) {
+        setStage('DURATION');
+        toast.error('Something went wrong!');
+      }
+    } else setStage('NODE_SELECTION');
+  };
+
   useEffect(() => {
     const unsubHash = window.electron.ipcRenderer.on(
       'node-hash-progress',
-      ({ filePath, progress }: any) => {
-        if (filePath === props.path) {
+      ({ filePath: fp, progress }: any) => {
+        if (fp === filePath) {
           setHashProgress(Math.round((progress as number) * 100));
         }
       }
@@ -215,33 +250,33 @@ const UploadFile = (props: {
       if (unsubUploadComplete) unsubUploadComplete();
       if (unsubUploadError) unsubUploadError();
     };
-  }, [fileKey, props.path]);
-
-  const { uploadFile, computeMerkleRootHash } = useFiles();
+  }, [fileKey, filePath, props.path]);
 
   const onNodeSelect = async (listIndex: number) => {
     // console.log(node.host);
-    setStage('HASHING');
     if (!startDate || !endDate) return;
 
-    computeMerkleRootHash(props.path)
+    setStage('HASHING');
+    setHashProgress(0);
+
+    computeMerkleRootHash(filePath)
       .then((hash) => {
         setStage('UPLOADING');
         setComputedHash(hash);
-
+        setUploadProgress(0);
         const node = list[listIndex];
         setSelectedNode(listIndex);
         uploadFile({
           bid: node.bid.toString(),
-          filePath: props.path,
-          fileSize: props.size,
+          filePath,
+          fileSize,
           host: node.host,
-
           segmentsCount: 1000,
           timeStart: toUnix(startDate),
           timeEnd: toUnix(endDate),
           merkleRootHash: hash,
           storageNodeAddress: node.address,
+          encrypted: useEncryption,
         })
           .then((fk) => {
             console.log('Got FileKey', fk);
@@ -250,7 +285,7 @@ const UploadFile = (props: {
           .catch((er) => toast.error(er?.toString()));
       })
       .catch((er) => {
-        setStage('NODE_SELECTION');
+        setStage('DURATION');
         toast.error('Something went wrong!');
       });
     // toast.success(token);
@@ -268,28 +303,31 @@ const UploadFile = (props: {
             size="1.8em"
             color="var(--chakra-colors-gray-800)"
           />
-          <VStack align="flex-start" spacing={0}>
-            <Flex
-              justifyContent="flex-start"
-              flexDir="column"
-              alignItems="center"
-            >
-              <Text fontSize=".9em" fontWeight="semibold">
-                {props.name.slice(0, 20) +
-                  (props.name.length > 20 ? '...' : '')}
-                {props.ext}
-              </Text>
-            </Flex>
+          <HStack justify="space-between" w="full">
+            <VStack align="flex-start" spacing={0}>
+              <Flex
+                justifyContent="flex-start"
+                flexDir="column"
+                alignItems="center"
+              >
+                <Text fontSize=".9em" fontWeight="semibold">
+                  {props.name.slice(0, 20) +
+                    (props.name.length > 20 ? '...' : '')}
+                  {props.ext}
+                </Text>
+              </Flex>
 
-            <Text m={0} fontSize=".8em" color="#7A7A7A" fontWeight="semibold">
-              {prettyBytes(props.size || 0)}
-            </Text>
-          </VStack>
+              <Text m={0} fontSize=".8em" color="#7A7A7A" fontWeight="semibold">
+                {prettyBytes(props.size || 0)}
+              </Text>
+            </VStack>
+          </HStack>
         </HStack>
       </HStack>
       <Divider />
       {stage === 'DURATION' && (
         <Flex
+          w="full"
           alignSelf="flex-start"
           align="flex-start"
           justify="flex-start"
@@ -324,12 +362,36 @@ const UploadFile = (props: {
               w="19.5ch"
               // w="100%"
             />
+            <FormHelperText>You pay for this duration only.</FormHelperText>
           </FormControl>
+          <Divider />
+          <FormControl>
+            <FormLabel>Encryption</FormLabel>
+            <Checkbox
+              isChecked={useEncryption}
+              onChange={(e) => setUseEncryption(e.target.checked)}
+              colorScheme="primary"
+            >
+              Encrypt file
+            </Checkbox>
+            <FormHelperText>
+              Expect large file size when encrypted is enabled.
+            </FormHelperText>
+          </FormControl>
+
           <Button
             isDisabled={!endDate}
             colorScheme="primary"
+            mt="1em"
+            rightIcon={<MdKeyboardArrowRight />}
             onClick={() => {
-              if (endDate) setStage('NODE_SELECTION');
+              if (endDate) {
+                if (new Date() > endDate) {
+                  alert('Duration is not valid.');
+                }
+                handleDurationNext();
+                // setStage('NODE_SELECTION');
+              }
             }}
           >
             Next
@@ -378,14 +440,39 @@ const UploadFile = (props: {
           </Text>
 
           <Flex flexDir="column" align="center" gap=".5em">
-            <Box w="32px" h="32px">
-              <CircularProgressbar
-                value={hashProgress}
-                // text={hashProgress.toString()}
-              />
-            </Box>
+            <CircularProgress
+              capIsRound
+              thickness="8px"
+              value={hashProgress}
+              color="primary.400"
+              size="32px"
+              // text={hashProgress.toString()}
+            >
+              <CircularProgressLabel>{hashProgress}%</CircularProgressLabel>
+            </CircularProgress>
+
             <Text fontWeight="600" fontSize="sm" color="gray.600">
               Computing Merkle Root
+            </Text>
+          </Flex>
+        </Flex>
+      )}
+      {stage === 'ENCRYPTING' && (
+        <Flex flexDir="column" w="full" gap="2em">
+          <Text
+            fontSize="1em"
+            w="full"
+            textAlign="start"
+            fontWeight="bold"
+            color="gray.700"
+          >
+            Encryption
+          </Text>
+
+          <Flex flexDir="column" align="center" gap=".5em">
+            <BladeSpinner />
+            <Text fontWeight="600" fontSize="sm" color="gray.600">
+              Encrypting file
             </Text>
           </Flex>
         </Flex>
@@ -475,7 +562,7 @@ const UploadFile = (props: {
                           <IoWarning />
 
                           <Text fontSize="sm" textAlign="center">
-                            {`No nodes seems to be reachable. Make sure you're online.`}
+                            {`No node seems to be reachable. Make sure you're online.`}
                           </Text>
                         </Flex>
                         <Button

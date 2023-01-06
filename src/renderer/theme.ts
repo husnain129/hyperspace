@@ -5,8 +5,8 @@ const config = {
   useSystemColorMode: false,
   colors: {
     primary: {
-      0: '#d8dae6',
-      50: '#b0b5cc  ',
+      0: '#e7e9f0',
+      50: '#e7e9f0  ',
       100: '#9da3c0 ',
       200: '#8991b3 ',
       300: '#757ea6',

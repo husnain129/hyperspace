@@ -31,16 +31,18 @@ const CreateAccount = (props: {
 
   const [sumbitting, setSubmitting] = useState(false);
   const handleSubmit = async () => {
-    if (key.length < 66 || name.length < 3) return;
+    console.log('>Submit');
+    if (!(key.length === 66 || key.length === 64) || name.length < 3) return;
     setSubmitting(true);
 
     try {
-      const publicKey = ethers.utils.computePublicKey(key);
+      const privateKey = key.length === 64 ? `0x${key}` : key;
+      const publicKey = ethers.utils.computePublicKey(privateKey);
       const address = ethers.utils.computeAddress(publicKey);
-
+      console.log('Create-account');
       await window.electron.ipcRenderer.invoke('create-account', {
         name,
-        private_key: key,
+        private_key: privateKey,
         public_key: publicKey,
         address,
         created_at: Date.now(),
@@ -123,6 +125,7 @@ const CreateAccount = (props: {
             <HStack gap="1em">
               <Button
                 onClick={() => handleSubmit()}
+                type="button"
                 colorScheme="primary"
                 rightIcon={
                   <BsChevronRight fontSize="0.8em" strokeWidth="1px" />

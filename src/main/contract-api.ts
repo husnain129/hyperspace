@@ -2,8 +2,10 @@ import { ethers } from 'ethers';
 import FactoryABI from '../factory-abi';
 import StorageABI from '../storage-abi';
 
-const factoryContractAddress = '0xC6906Df3A9268729EDB78F8eF1E31F59b70DA857';
-const providerAddress = 'http://127.0.0.1:7545';
+const factoryContractAddress = '0xc00E523441d91bB9B8CDa70261f26cB461FE2Ec9';
+// const providerAddress = 'http://127.0.0.1:7545';
+const providerAddress =
+  'https://opt-goerli.g.alchemy.com/v2/lLvcVplpamR-7ZTitncsc_qSPkenwum9';
 
 // eslint-disable-next-line import/prefer-default-export
 export const ContractAPI = {
@@ -36,6 +38,20 @@ export const ContractAPI = {
     const nodeIfc = new ethers.utils.Interface(StorageABI);
 
     const contract = new ethers.Contract(contractAddress, nodeIfc, signer);
+    console.log('Params');
+    console.log(
+      1,
+      data.userAddress,
+      ethers.utils.arrayify(`0x${data.merkleRootHash}`),
+      data.fileSize,
+      data.timerStart,
+      data.timerEnd,
+      data.proveTimeoutLength,
+      data.concludeTimeoutLength,
+      data.segmentsCount,
+      BigInt(data.bidAmount)
+    );
+    console.log('>Conclude Timeout:', data.concludeTimeoutLength);
     const tx = await contract.concludeTransaction(
       1,
       data.userAddress,

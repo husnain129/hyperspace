@@ -20,6 +20,7 @@ const Navbar = (props: { onUploadClick: () => void; isUploading: boolean }) => {
       className="draggable-region"
       w="100vw"
       h="65px"
+      flexShrink={0}
       borderBottom="1px solid #F2F2F2 "
       alignItems="center"
       px="2em"
@@ -30,7 +31,7 @@ const Navbar = (props: { onUploadClick: () => void; isUploading: boolean }) => {
         {/* <Image src={hyperspace} alt="logo" h="2rem" /> */}
       </Flex>
       <HStack gap=".5em">
-        <IconButton
+        {/* <IconButton
           border="1px solid"
           size="sm"
           // h="1.8rem"
@@ -41,7 +42,7 @@ const Navbar = (props: { onUploadClick: () => void; isUploading: boolean }) => {
           variant="ghost"
           icon={<TbDownload />}
           aria-label="download and upload progress"
-        />
+        /> */}
         <Button
           px="1.1em"
           borderRadius="30px"

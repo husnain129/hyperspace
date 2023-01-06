@@ -25,7 +25,13 @@ export type Channels =
   | 'get-info'
   | 'node-contract-info'
   | 'node-http-download'
-  | 'open-finder';
+  | 'open-finder'
+  | 'export-account'
+  | 'browse-load-account'
+  | 'load-account-from-file'
+  | 'remove-account'
+  | 'encrypt-file'
+  | 'decrypt-file';
 
 contextBridge.exposeInMainWorld('electron', {
   ipcRenderer: {

@@ -22,4 +22,5 @@ export interface IFile {
   concludeTimeoutLength: number;
   proveTimeoutLength: number;
   sha256: string;
+  isEncrypted: boolean;
 }

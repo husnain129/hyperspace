@@ -79,42 +79,43 @@ export default function Nodes() {
           onlineStatus: false,
         }))
       );
-      setTimeout(() => {
+
+      (s as typeof list).forEach((n, nodeInd) => {
         const nodeR = window.electron.ipcRenderer.invoke(
           'get-node-info',
-          'localhost:8000'
+          n.host.replace('http://', '')
         );
         nodeR
           .then((res) => {
             setList((_list) =>
               _list.map((_l, i) =>
-                i > 0
-                  ? { ..._l, statsLoading: false }
-                  : {
+                i === nodeInd
+                  ? {
                       ..._l,
                       freeStorage: res.freeStorage,
                       latency: res.latency,
                       onlineStatus: true,
                       statsLoading: false,
                     }
+                  : _l
               )
             );
           })
           .catch((er) => {
             setList((_list) =>
               _list.map((_l, i) =>
-                i > 0
-                  ? { ..._l, statsLoading: false }
-                  : {
+                i === nodeInd
+                  ? {
                       ..._l,
                       onlineStatus: false,
                       freeStorage: 0,
                       statsLoading: false,
                     }
+                  : _l
               )
             );
           });
-      }, 2000);
+      });
     })
       .catch((er) => console.log(er))
       .finally(() => {

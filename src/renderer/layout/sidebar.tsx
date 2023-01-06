@@ -50,6 +50,7 @@ const Sidebar = ({ activeNavigation }: { activeNavigation: NAVIGATION }) => {
 
         const eth = Intl.NumberFormat('en', {
           maximumFractionDigits: 4,
+          minimumFractionDigits: 2,
         }).format(Number(ethers.utils.formatEther(blnc)));
 
         setBalance(eth);
@@ -88,7 +89,7 @@ const Sidebar = ({ activeNavigation }: { activeNavigation: NAVIGATION }) => {
           <Image
             src={EthLogo}
             borderRadius="full"
-            h="2.5rem"
+            h="2.1rem"
             alt="user"
             objectFit="cover"
           />

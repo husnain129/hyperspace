@@ -1,9 +1,11 @@
+/* eslint-disable no-nested-ternary */
 /* eslint-disable react/require-default-props */
 /* eslint-disable react/no-children-prop */
 import {
   CircularProgress,
   CircularProgressLabel,
   Flex,
+  Heading,
   HStack,
   IconButton,
   Spinner,
@@ -20,7 +22,23 @@ import { format } from 'date-fns';
 import { FileStatus, IFile } from 'main/IFile';
 import prettyBytes from 'pretty-bytes';
 import { BiDownload, BiStop, BiTrash, BiTrashAlt } from 'react-icons/bi';
-import { BsFillFileEarmarkZipFill, BsStop, BsStopFill } from 'react-icons/bs';
+import {
+  BsFile,
+  BsFileBinaryFill,
+  BsFileEarmark,
+  BsFileEarmarkDiffFill,
+  BsFileEarmarkFill,
+  BsFileFill,
+  BsFileWordFill,
+  BsFileXFill,
+  BsFillFileEarmarkZipFill,
+  BsStop,
+  BsStopFill,
+} from 'react-icons/bs';
+import { FiFile } from 'react-icons/fi';
+import { HiDownload } from 'react-icons/hi';
+import { MdFilePresent, MdOutlineDownload } from 'react-icons/md';
+import useAccount from 'renderer/hooks/useAccount';
 import useFiles from 'renderer/hooks/useFiles';
 import BladeSpinner from '../blade-spinner/BladeSpinner';
 
@@ -28,10 +46,12 @@ const FileTableData = ({
   file,
   onDownloadClick,
   downloading,
+  onDelete,
 }: {
   file: IFile;
   onDownloadClick: () => void;
   downloading?: { progress: number };
+  onDelete: () => void;
 }) => {
   const { name } = file;
   const size = prettyBytes(file.fileSize);
@@ -41,7 +61,7 @@ const FileTableData = ({
     <Tr>
       <Td>
         <HStack>
-          <BsFillFileEarmarkZipFill
+          <BsFileEarmarkFill
             size="1.2em"
             color="#616161"
             style={{ flexShrink: 0 }}
@@ -84,7 +104,7 @@ const FileTableData = ({
               size="sm"
               borderColor="gray.300"
               variant="ghost"
-              children={<BiDownload />}
+              children={<HiDownload color="var(--chakra-colors-gray-700)" />}
               onClick={onDownloadClick}
             />
           ) : (
@@ -93,7 +113,7 @@ const FileTableData = ({
               thickness="6px"
               value={downloading.progress}
               color="primary.400"
-              size={'32px'}
+              size="32px"
               pos="relative"
               cursor="pointer"
               sx={{
@@ -124,7 +144,8 @@ const FileTableData = ({
               />
             </CircularProgress>
           )}
-          <IconButton
+          {/* <IconButton
+            onClick={onDelete}
             aria-label="delete"
             colorScheme="gray"
             borderRadius="full"
@@ -134,7 +155,7 @@ const FileTableData = ({
             variant="ghost"
             isDisabled={!!downloading}
             children={<BiTrash />}
-          />
+          /> */}
         </HStack>
       </Td>
     </Tr>
@@ -143,9 +164,14 @@ const FileTableData = ({
 
 const FileContainer = () => {
   const files = useFiles();
-
+  const { account } = useAccount();
   const handleDownload = (fileKey: string) => {
-    files.downloadFile(fileKey).catch((er) => {
+    files.downloadFile(fileKey, account.private_key).catch((er) => {
+      console.warn(er);
+    });
+  };
+  const handleDelete = (fileKey: string) => {
+    files.downloadFile(fileKey, account.private_key).catch((er) => {
       console.warn(er);
     });
   };
@@ -153,12 +179,24 @@ const FileContainer = () => {
   return (
     <Flex
       w="full"
+      // bg="blue"
       h="full"
       p="2em"
       alignItems="flex-start"
-      justifyContent="center"
+      flexDir="column"
     >
-      <TableContainer maxWidth="calc(100vw - 300px )">
+      <Heading size="md" color="gray.700" mb="2rem">
+        Dashboard
+      </Heading>
+      <TableContainer
+        w="full"
+        maxWidth="calc(100vw - 300px )"
+        mx="auto"
+        alignSelf="center"
+        // maxH="70vh"
+        pr="1em"
+        overflowY="auto"
+      >
         <Table variant="simple">
           <Thead w="full">
             <Tr>
@@ -182,11 +220,25 @@ const FileContainer = () => {
           <Tbody>
             {files.isLoading ? (
               <Spinner />
+            ) : files.files.length === 0 ? (
+              <Tr>
+                <Td colSpan={5}>
+                  <Text
+                    textAlign="center"
+                    fontWeight="500"
+                    fontSize="sm"
+                    color="gray.400"
+                  >
+                    Your files will appear here.
+                  </Text>
+                </Td>
+              </Tr>
             ) : (
               files.files
                 .sort((x, y) => y.timerStart - x.timerStart)
                 .map((f, i) => (
                   <FileTableData
+                    onDelete={() => handleDelete(f.fileKey)}
                     file={f}
                     key={f.fileKey}
                     onDownloadClick={() => handleDownload(f.fileKey)}

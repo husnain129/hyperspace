@@ -49,7 +49,14 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
             }[n.pathname] as NAVIGATION
           }
         />
-        {children}
+        <Flex
+          w="full"
+          flexDir={'column'}
+          maxH={'calc(100vh - 65px)'}
+          overflow="auto"
+        >
+          {children}
+        </Flex>
       </Flex>
       {selectedFile && showModal && (
         <GenericModal

@@ -15,10 +15,30 @@ export interface IAccount {
   created_at: number;
 }
 
+export async function LoadAccountInfoFromFile(filePath: string) {
+  if (!fs.existsSync(filePath)) throw new Error("file doesn't exists");
+
+  const db = await sqlite.open({
+    driver: sqlite3.Database,
+    filename: filePath,
+  });
+  if (!db) throw new Error('failed to open db');
+
+  const res = await db.get<IAccount>('SELECT * FROM account');
+  console.log(res);
+  if (res === undefined) throw new Error('failed to load account');
+  try {
+    await db.close();
+  } catch {
+    console.warn('failed to close db');
+  }
+  return res;
+}
+
 const DB_API = {
   db: null as sqlite.Database | null,
   async connect() {
-    if (this.db != null) {
+    if (this.db != null && fs.existsSync(dbFile)) {
       return Promise.resolve(this.db);
     }
     this.db = await sqlite.open({
@@ -64,6 +84,7 @@ const DB_API = {
         prove_timeout: number;
         sha256: '';
         created_at: string;
+        is_encrypted: boolean;
       }>
     >(`SELECT * from files`);
     console.log('>rows');
@@ -86,6 +107,7 @@ const DB_API = {
       timeCreated: r.time_created,
       timerEnd: r.timer_end,
       timerStart: r.timer_start,
+      isEncrypted: !!r.is_encrypted,
     }));
   },
   async insertFile(file: IFile) {
@@ -110,6 +132,7 @@ const DB_API = {
       conclude_timeout int(11),
       prove_timeout int(11),
       sha256 VARCHAR(256),
+      is_encrypted int(1),
 
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
@@ -119,8 +142,8 @@ const DB_API = {
       file_key,bid,name,contract_address,file_size,
       merkle_root,segments,timer_start,timer_end,
       time_created, last_verified, conclude_timeout,
-      prove_timeout,sha256
-    ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      prove_timeout,sha256,is_encrypted
+    ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       file.fileKey,
       file.bid,
       file.name,
@@ -134,7 +157,8 @@ const DB_API = {
       file.lastVerified,
       file.concludeTimeoutLength,
       file.proveTimeoutLength,
-      file.sha256
+      file.sha256,
+      file.isEncrypted ? 1 : 0
     );
   },
   async createAccount(account: IAccount) {
@@ -164,7 +188,6 @@ const DB_API = {
       account.private_key,
       account.public_key,
       account.address,
-
       account.created_at
     );
   },
