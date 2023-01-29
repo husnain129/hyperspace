@@ -2,7 +2,7 @@ import { ethers } from 'ethers';
 import FactoryABI from '../factory-abi';
 import StorageABI from '../storage-abi';
 
-const factoryContractAddress = '0xc00E523441d91bB9B8CDa70261f26cB461FE2Ec9';
+const factoryContractAddress = '0xBD58bc10541F1e91d2759FCCB23F5454c8598cfB';
 // const providerAddress = 'http://127.0.0.1:7545';
 const providerAddress =
   'https://opt-goerli.g.alchemy.com/v2/lLvcVplpamR-7ZTitncsc_qSPkenwum9';

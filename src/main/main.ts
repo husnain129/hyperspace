@@ -424,6 +424,7 @@ ipcMain.handle('node-contract-info', async (event, address) => {
 ipcMain.handle('encrypt-file', async (event, { filePath, dest, key }) => {
   const encKey = sha256(key).slice(2).slice(32);
   console.log('ENC');
+  console.log(sha256(key));
   console.log(encKey);
 
   const iv = globalIV;

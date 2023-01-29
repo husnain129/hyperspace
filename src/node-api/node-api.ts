@@ -29,7 +29,7 @@ const proto = grpc.loadPackageDefinition(pkgDef) as unknown as ProtoGrpcType;
 const NodeAPI = {
   getClient(host: string) {
     const client = new proto.proto.StorageNode(
-      host,
+      host.replace('http://', ''),
       grpc.credentials.createInsecure()
     );
     return client;
@@ -49,6 +49,9 @@ const NodeAPI = {
           fileSize,
           segmentsCount,
           timePeriod,
+        },
+        {
+          deadline: Date.now() + 500,
         },
         (err, data) => {
           if (err || !data) {
@@ -216,7 +219,8 @@ const NodeAPI = {
         },
       })
       // eslint-disable-next-line promise/always-return
-      .then(() => {
+      .then((r) => {
+        console.log(r.request);
         console.log('Upload Complete');
         onComplete();
       })

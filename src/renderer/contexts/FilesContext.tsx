@@ -29,10 +29,11 @@ export function computeFileKey(
   userAddress: string,
   fileMerkleRootHash: string
 ) {
-  const s = ethers.utils.solidityPack(
+  const s = ethers.utils.defaultAbiCoder.encode(
     ['address', 'bytes32'],
     [userAddress, `0x${fileMerkleRootHash}`]
   );
+  console.log(s);
   return ethers.utils.solidityKeccak256(['bytes'], [s]).slice(2); // omit 0x
 }
 
@@ -177,7 +178,7 @@ export default function FilesContextProvider({
       const { dest } = await window.electron.ipcRenderer.invoke(
         'node-http-download',
         {
-          url: `http://${host}/get/${fileKey}`,
+          url: `${host}/get/${fileKey}`,
           token: '',
           name: file.name,
           fileKey,

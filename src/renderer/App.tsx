@@ -21,7 +21,7 @@ import AuthLayout from './layout/AuthLayout';
 import type { IAccount } from '../main/db-api';
 import AccountContextProvider from './contexts/AccountContext';
 import Account from './components/account/account';
-import FilesContextProvider from './contexts/FilesContext';
+import FilesContextProvider, { computeFileKey } from './contexts/FilesContext';
 import 'react-circular-progressbar/dist/styles.css';
 
 const Hello = () => {
@@ -49,6 +49,16 @@ export default function App() {
   // window.electron.ipcRenderer.sendMessage('createNewUserFile', {
   //   username: 'husnain',
   // });
+
+  useEffect(() => {
+    console.log(
+      'File Key: ',
+      computeFileKey(
+        '0x080d618886e4209266925e43c1a8b38fafcd3bb5',
+        '039e37804323faeaa5fb13686f1c8f112b3fac0bdaca954a6e132572283cf436'
+      )
+    );
+  }, []);
   const navigate = useNavigate();
   const [account, setAccount] = useState<IAccount | null>(null);
   const [accountLoading, setAccountLoading] = useState(true);
