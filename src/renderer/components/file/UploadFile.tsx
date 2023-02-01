@@ -40,8 +40,9 @@ import { CircularProgressbar } from 'react-circular-progressbar';
 import toast from 'react-hot-toast';
 import { BiArrowToRight, BiCheck } from 'react-icons/bi';
 import { BsFileEarmarkFill } from 'react-icons/bs';
+import { FiInfo } from 'react-icons/fi';
 import { HiArrowRight } from 'react-icons/hi';
-import { IoReloadOutline, IoWarning } from 'react-icons/io5';
+import { IoReloadOutline, IoWarning, IoWarningOutline } from 'react-icons/io5';
 import { MdArrowRight, MdKeyboardArrowRight } from 'react-icons/md';
 import useAccount from 'renderer/hooks/useAccount';
 import useFiles from 'renderer/hooks/useFiles';
@@ -82,8 +83,10 @@ const UploadFile = (props: {
   const [list, setList] = useState<Array<IList>>([]);
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
-  const [useEncryption, setUseEncryption] = useState(false);
+  const [useEncryption, setUseEncryption] = useState(true);
+  const [nodes, setNodes] = useState<[] | null>(null);
   const { account } = useAccount();
+
   const [stage, setStage] = useState<
     | 'DURATION'
     | 'NODE_SELECTION'
@@ -94,9 +97,23 @@ const UploadFile = (props: {
     | 'COMPLETE'
   >('DURATION');
 
+  const loadNodes = useCallback(() => {
+    const r = window.electron.ipcRenderer.invoke('get-nodes');
+    setNodes(null);
+    r.then((n: any) => {
+      setNodes(n);
+      console.log('Got');
+    }).catch((er) => console.error(er));
+  }, []);
+
+  useEffect(() => {
+    loadNodes();
+  }, [loadNodes]);
+
   const fetchNodesData = useCallback(
     (timePeriod: number, nodesList: Array<IList>) => {
       nodesList.map((n, i) => {
+        console.log(`PING ${i}`);
         window.electron.ipcRenderer
           .invoke('node-ping', {
             host: n.host,
@@ -132,54 +149,56 @@ const UploadFile = (props: {
         return { ...n, loading: true };
       });
     },
-    []
+    [props.size]
   );
 
   const fetchNodes = useCallback(
-    (endDateTime: Date) => {
+    async (endDateTime: Date) => {
+      let cNodes = nodes;
       setLoading(true);
-      setTimeout(() => {
-        const r = window.electron.ipcRenderer.invoke('get-nodes');
-        console.log('Got nodes:', r);
+      try {
+        if (nodes == null) {
+          cNodes = await window.electron.ipcRenderer.invoke('get-nodes');
+        }
 
         // eslint-disable-next-line promise/always-return, promise/catch-or-return
-        r.then((s) => {
-          console.log('Nodes:', s);
-          const l = (s as typeof list).map((n) => ({
-            address: n.address,
-            bid: BigInt(0),
-            canStore: false,
-            host: n.host,
-            latency: 0,
-            loading: false,
-            online: true,
-            owner: n.owner,
-            tlsCert: n.tlsCert,
-          }));
-          setList(l);
-          console.log('fetchNodesData');
 
-          setStartDate(new Date());
-          fetchNodesData(toUnix(endDateTime) - toUnix(new Date()), l);
-        })
-          .catch((er) => console.log(er))
-          .finally(() => {
-            setLoading(false);
-          });
-      }, 2000);
+        console.log('Nodes:', cNodes);
+        const l = (cNodes as typeof list).map((n) => ({
+          address: n.address,
+          bid: BigInt(0),
+          canStore: false,
+          host: n.host,
+          latency: 0,
+          loading: true,
+          online: true,
+          owner: n.owner,
+          tlsCert: n.tlsCert,
+        }));
+        setList(l);
+        console.log('fetchNodesData');
+
+        setStartDate(new Date());
+        fetchNodesData(toUnix(endDateTime) - toUnix(new Date()), l);
+      } catch (er) {
+        console.error(er);
+      } finally {
+        setLoading(false);
+      }
     },
-    [fetchNodesData]
+    [fetchNodesData, nodes]
   );
 
   useEffect(() => {
     if (!endDate) return;
+    if (stage !== 'NODE_SELECTION') return;
     // const d = intervalToDuration({ start: new Date(date), end: new Date() });
 
     fetchNodes(endDate);
     return () => {
       setList([]);
     };
-  }, [fetchNodes, endDate]);
+  }, [fetchNodes, endDate, stage]);
 
   const [selectedNode, setSelectedNode] = useState(-1);
   const [computedHash, setComputedHash] = useState('');
@@ -188,10 +207,20 @@ const UploadFile = (props: {
 
   const [hashProgress, setHashProgress] = useState(0);
 
-  const { uploadFile, computeMerkleRootHash, encryptFile } = useFiles();
+  const { uploadFile, computeMerkleRootHash, encryptFile, files } = useFiles();
 
   const [filePath, setFilePath] = useState(props.path);
   const [fileSize, setFileSize] = useState(props.size);
+
+  const getRecommendation = useCallback((node: IList) => {
+    if (node.latency < 500) {
+      return 'Good';
+    }
+    if (node.latency >= 500 && node.latency < 1000) {
+      return 'Average';
+    }
+    return 'Poor';
+  }, []);
 
   const handleDurationNext = async () => {
     setStage('ENCRYPTING');
@@ -222,7 +251,23 @@ const UploadFile = (props: {
       'file-complete',
       ({ fileKey: fk }: any) => {
         if (fileKey && fk === fileKey) {
-          setStage('COMPLETE');
+          if (useEncryption) {
+            window.electron.ipcRenderer
+              .invoke('delete-file', `${props.path}.enc`)
+              .catch((er) => console.warn(er));
+          }
+          setStage('CONCLUDING');
+        }
+      }
+    );
+    const unsubConcludeTx = window.electron.ipcRenderer.on(
+      'conclude-tx',
+      ({ fileKey: fk, status }: any) => {
+        if (fileKey && fk === fileKey) {
+          if (status) setStage('COMPLETE');
+          else {
+            setStage('DURATION');
+          }
         }
       }
     );
@@ -230,6 +275,11 @@ const UploadFile = (props: {
       'file-error',
       ({ fileKey: fk, name, message }: any) => {
         if (fileKey && fk === fileKey) {
+          if (useEncryption) {
+            window.electron.ipcRenderer
+              .invoke('delete-file', `${props.path}.enc`)
+              .catch((er) => console.warn(er));
+          }
           setStage('DURATION');
           toast.error('Something went wrong while uploading');
         }
@@ -249,8 +299,9 @@ const UploadFile = (props: {
       if (unsubUpload) unsubUpload();
       if (unsubUploadComplete) unsubUploadComplete();
       if (unsubUploadError) unsubUploadError();
+      if (unsubConcludeTx) unsubConcludeTx();
     };
-  }, [fileKey, filePath, props.path]);
+  }, [fileKey, filePath, props.path, useEncryption]);
 
   const onNodeSelect = async (listIndex: number) => {
     // console.log(node.host);
@@ -258,36 +309,41 @@ const UploadFile = (props: {
 
     setStage('HASHING');
     setHashProgress(0);
+    try {
+      const segmentsCount = await window.electron.ipcRenderer.invoke(
+        'get-segments-count',
+        props.path
+      );
+      const hash = await computeMerkleRootHash(filePath, segmentsCount);
+      console.log('SEG:', segmentsCount);
+      setStage('UPLOADING');
+      setComputedHash(hash);
+      setUploadProgress(0);
 
-    computeMerkleRootHash(filePath)
-      .then((hash) => {
-        setStage('UPLOADING');
-        setComputedHash(hash);
-        setUploadProgress(0);
-        const node = list[listIndex];
-        setSelectedNode(listIndex);
-        uploadFile({
-          bid: node.bid.toString(),
-          filePath,
-          fileSize,
-          host: node.host,
-          segmentsCount: 1000,
-          timeStart: toUnix(startDate),
-          timeEnd: toUnix(endDate),
-          merkleRootHash: hash,
-          storageNodeAddress: node.address,
-          encrypted: useEncryption,
-        })
-          .then((fk) => {
-            console.log('Got FileKey', fk);
-            setFileKey(fk);
-          })
-          .catch((er) => toast.error(er?.toString()));
-      })
-      .catch((er) => {
-        setStage('DURATION');
-        toast.error('Something went wrong!');
+      const node = list[listIndex];
+
+      setSelectedNode(listIndex);
+
+      const fk = await uploadFile({
+        bid: node.bid.toString(),
+        filePath,
+        fileSize,
+        host: node.host,
+        segmentsCount,
+        timeStart: toUnix(startDate),
+        timeEnd: toUnix(endDate),
+        merkleRootHash: hash,
+        storageNodeAddress: node.address,
+        encrypted: useEncryption,
       });
+
+      console.log('Got FileKey', fk);
+      setFileKey(fk);
+    } catch (er) {
+      console.warn(er);
+      setStage('DURATION');
+      toast.error('Something went wrong!');
+    }
     // toast.success(token);
   };
   return (
@@ -374,8 +430,22 @@ const UploadFile = (props: {
             >
               Encrypt file
             </Checkbox>
+
             <FormHelperText>
-              Expect large file size when encrypted is enabled.
+              <VStack align={'flex-start'}>
+                <Text>Encrypt file with end-to-end encryption.</Text>
+                {useEncryption && (
+                  <Text
+                    color="primary.600"
+                    display={'flex'}
+                    gap="4px"
+                    alignItems={'center'}
+                  >
+                    <FiInfo size={'1.2em'} />
+                    Encrypted files have larger size and cannot be shared.
+                  </Text>
+                )}
+              </VStack>
             </FormHelperText>
           </FormControl>
 
@@ -448,7 +518,9 @@ const UploadFile = (props: {
               size="32px"
               // text={hashProgress.toString()}
             >
-              <CircularProgressLabel>{hashProgress}%</CircularProgressLabel>
+              <CircularProgressLabel>
+                {Math.max(0, Math.min(hashProgress, 100))}%
+              </CircularProgressLabel>
             </CircularProgress>
 
             <Text fontWeight="600" fontSize="sm" color="gray.600">
@@ -492,7 +564,32 @@ const UploadFile = (props: {
           <Flex flexDir="column" align="center" gap=".5em">
             <BladeSpinner />
             <Text fontWeight="600" fontSize="sm" color="gray.600">
-              Uploading to Storage Node ({uploadProgress}%)
+              {uploadProgress > 99
+                ? 'Storage Node is Processing File'
+                : `Uploading to Storage Node (${Math.max(
+                    0,
+                    Math.min(uploadProgress, 100)
+                  )}%)`}
+            </Text>
+          </Flex>
+        </Flex>
+      )}
+      {stage === 'CONCLUDING' && (
+        <Flex flexDir="column" w="full" gap="2em">
+          <Text
+            fontSize="1em"
+            w="full"
+            textAlign="start"
+            fontWeight="bold"
+            color="gray.700"
+          >
+            Concluding Transaction
+          </Text>
+
+          <Flex flexDir="column" align="center" gap=".5em">
+            <BladeSpinner />
+            <Text fontWeight="600" fontSize="sm" color="gray.600">
+              Waiting for transaction to be mined
             </Text>
           </Flex>
         </Flex>
@@ -509,11 +606,11 @@ const UploadFile = (props: {
             >
               Select Storage Node
             </Text>
-            <Select placeholder="Sort" maxW="17ch" size="sm">
+            {/* <Select placeholder="Sort" maxW="17ch" size="sm">
               <option value="fee">Fee</option>
               <option value="latency">Latency</option>
               <option value="recommendation">Recommendation</option>
-            </Select>
+            </Select> */}
           </Flex>
 
           <TableContainer w="full" overflowY="auto" maxH="30vh">
@@ -521,7 +618,7 @@ const UploadFile = (props: {
               <Thead>
                 <Tr>
                   <Th textTransform="none" color="gray.500">
-                    Node
+                    Node Contract
                   </Th>
                   <Th textTransform="none" color="gray.500">
                     Fee
@@ -596,9 +693,12 @@ const UploadFile = (props: {
                           <Link
                             fontFamily="mono"
                             color="blue.600"
-                            href={`https://etherscan.io/address/${l.address}`}
+                            href={`https://goerli-optimism.etherscan.io/address/${l.address}`}
                             target="_blank"
                             rel="noreferrer"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                            }}
                           >
                             {l.address}
                           </Link>
@@ -611,17 +711,29 @@ const UploadFile = (props: {
                             fontWeight="500"
                           >
                             Ξ{' '}
-                            {Number(ethers.utils.formatEther(l.bid)).toFixed(5)}
+                            {l.loading ? (
+                              <BladeSpinner size="sm" />
+                            ) : (
+                              Number(ethers.utils.formatEther(l.bid)).toFixed(5)
+                            )}
                           </Text>
                         </Td>
                         <Td>
                           <Text fontSize=".9em" color="#7D7D7D">
-                            {l.latency} ms
+                            {l.loading ? (
+                              <BladeSpinner size="sm" />
+                            ) : (
+                              `${l.latency} ms`
+                            )}
                           </Text>
                         </Td>
                         <Td>
                           <Text fontSize=".9em" color="#7D7D7D">
-                            Good
+                            {l.loading ? (
+                              <BladeSpinner size="sm" />
+                            ) : (
+                              getRecommendation(l)
+                            )}
                           </Text>
                         </Td>
                       </Tr>

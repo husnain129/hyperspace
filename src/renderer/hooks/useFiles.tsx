@@ -9,6 +9,7 @@ export default function useFiles() {
     computeMerkleRootHash,
     downloadFile,
     encryptFile,
+    abortDownload,
   } = useContext(FilesContext);
 
   return {
@@ -17,6 +18,7 @@ export default function useFiles() {
     uploadFile,
     computeMerkleRootHash,
     downloadFile,
+    abortDownload,
     encryptFile,
   };
 }

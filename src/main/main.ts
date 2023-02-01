@@ -28,12 +28,14 @@ import { pipeline } from 'stream/promises';
 import { randomBytes, createCipheriv, createDecipheriv } from 'crypto';
 import { promisify } from 'util';
 import { sha256 } from 'ethers/lib/utils';
-import NodeAPI from '../node-api/node-api';
+import NodeAPI, { IGetMerkleProofResponse } from '../node-api/node-api';
 import { ContractAPI } from './contract-api';
 import DB_API, { IAccount, LoadAccountInfoFromFile } from './db-api';
 import MenuBuilder from './menu';
 
 import { resolveHtmlPath } from './util';
+import MerkleTree from 'merkletreejs';
+import { merkleVerify } from './merkle-util';
 
 export const globalIV = 'a0d336ccd2aee9a6';
 
@@ -128,6 +130,7 @@ ipcMain.handle(
   'node-http-upload',
   (event, { url, filePath, token, fileKey }) => {
     const onProgress = (p: number) => {
+      console.log('>P:', p);
       mainWindow?.webContents.send('file-progress', {
         fileKey,
         progress: p,
@@ -142,9 +145,10 @@ ipcMain.handle(
         operation: 'UPLOAD',
       });
     };
-    const onComplete = () => {
+    const onComplete = ({ download_url }: any) => {
       mainWindow?.webContents.send('file-complete', {
         fileKey,
+        download_url,
         operation: 'UPLOAD',
       });
     };
@@ -164,6 +168,18 @@ ipcMain.handle(
   }
 );
 
+ipcMain.handle('node-http-download-abort', (event, { fileKey }) => {
+  if (abortControllerMapping[fileKey]) {
+    try {
+      abortControllerMapping[fileKey].abort();
+      return true;
+    } catch (er) {
+      console.warn(er);
+    }
+  }
+  return false;
+});
+
 ipcMain.handle(
   'node-http-download',
   (event, { url, token, fileKey, name, decrypt }) => {
@@ -181,6 +197,7 @@ ipcMain.handle(
       });
     };
     const onError = (err: Error) => {
+      console.log('Sending File Download Error');
       mainWindow?.webContents.send('file-error', {
         fileKey,
         name: err.name,
@@ -274,6 +291,7 @@ ipcMain.handle(
 );
 
 export interface IPCcontractConcludeTx {
+  fileKey: string;
   contractAddress: string;
   privateKey: string;
   weiValue: string;
@@ -293,6 +311,7 @@ ipcMain.handle(
   async (
     event,
     {
+      fileKey,
       contractAddress,
       privateKey,
       weiValue,
@@ -308,24 +327,37 @@ ipcMain.handle(
     }: IPCcontractConcludeTx
   ) => {
     console.log('ContractAPI.concludeTransaction');
-    const res = ContractAPI.concludeTransaction(
-      contractAddress,
-      privateKey,
-      weiValue,
-      {
-        merkleRootHash,
-        fileSize,
-        segmentsCount,
-        timerStart,
-        timerEnd,
-        bidAmount,
-        userAddress,
-        concludeTimeoutLength,
-        proveTimeoutLength,
-      }
-    );
+    try {
+      const res = await ContractAPI.concludeTransaction(
+        contractAddress,
+        privateKey,
+        weiValue,
+        {
+          merkleRootHash,
+          fileSize,
+          segmentsCount,
+          timerStart,
+          timerEnd,
+          bidAmount,
+          userAddress,
+          concludeTimeoutLength,
+          proveTimeoutLength,
+        }
+      );
+      mainWindow?.webContents.send('conclude-tx', {
+        fileKey,
 
-    return res;
+        status: true,
+      });
+      return res;
+    } catch (er) {
+      mainWindow?.webContents.send('conclude-tx', {
+        fileKey,
+
+        status: false,
+      });
+      throw er;
+    }
   }
 );
 ipcMain.handle('create-account', async (event, account: IAccount) => {
@@ -391,6 +423,15 @@ ipcMain.handle('export-account', async (event, prefix) => {
 ipcMain.handle('get-balance', async (event, addr: string) => {
   return ContractAPI.getBalance(addr);
 });
+
+ipcMain.handle('get-segments-count', async (event, filePath) => {
+  const fstats = fs.statSync(filePath);
+
+  const fileSize = fstats.size;
+  const segmentsCount = Math.ceil(fileSize / (1024 * 1));
+  return segmentsCount;
+});
+
 ipcMain.handle('get-account', async (event, hostname) => {
   const account = await DB_API.getAccount();
   return account;
@@ -404,7 +445,13 @@ ipcMain.handle('browse-file', async (event) => {
   const selectedPath = dialog.showOpenDialogSync(mainWindow!, {});
   if (!selectedPath || selectedPath.length === 0) return null;
   const { name, ext } = path.parse(selectedPath[0]);
-
+  if (await DB_API.fileExists(name + ext)) {
+    dialog.showErrorBox(
+      'File Already Uploaded',
+      "Your've already uploaded this file."
+    );
+    return null;
+  }
   const stats = fs.statSync(selectedPath[0]);
   return { path: selectedPath[0], size: stats.size, name, ext };
 });
@@ -421,6 +468,46 @@ ipcMain.handle('get-nodes', async (event, arg) => {
 ipcMain.handle('node-contract-info', async (event, address) => {
   return ContractAPI.getStorageNodeInfo(address);
 });
+ipcMain.handle(
+  'node-get-proof',
+  async (event, { host, fileKey, segmentIndex, root }) => {
+    try {
+      const proofResult: IGetMerkleProofResponse = await NodeAPI.GetMerkleProof(
+        host,
+        fileKey,
+        segmentIndex
+      );
+      console.log(proofResult.root);
+      const res = merkleVerify(
+        proofResult.proof,
+        proofResult.root,
+        proofResult.data,
+        segmentIndex
+      );
+      console.log('VERI:', res);
+      return { result: proofResult, error: null };
+    } catch (er: any) {
+      return {
+        result: null,
+        error: {
+          message: er.message,
+          code: er.code,
+          details: er.details,
+        },
+      };
+    }
+  }
+);
+
+ipcMain.handle('delete-file', async (event, filePath) => {
+  return new Promise((resolve, reject) => {
+    fs.rm(filePath, (er) => {
+      if (er) reject(er);
+      else resolve(true);
+    });
+  });
+});
+
 ipcMain.handle('encrypt-file', async (event, { filePath, dest, key }) => {
   const encKey = sha256(key).slice(2).slice(32);
   console.log('ENC');

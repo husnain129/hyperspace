@@ -1,3 +1,4 @@
+/* eslint-disable prefer-promise-reject-errors */
 /* eslint-disable promise/catch-or-return */
 /* eslint-disable consistent-return */
 import * as grpc from '@grpc/grpc-js';
@@ -22,6 +23,13 @@ const protoFile = path.join(__dirname, '../../assets', 'storage-node.proto');
 // console.log('GProto');
 // console.log(t.slice(0, 100));
 
+export interface IGetMerkleProofResponse {
+  segmentIndex: number;
+  segmentCount: number;
+  root: Buffer;
+  proof: Buffer[];
+  data: Buffer;
+}
 const pkgDef = protoLoader.loadSync(protoFile);
 
 const proto = grpc.loadPackageDefinition(pkgDef) as unknown as ProtoGrpcType;
@@ -50,9 +58,7 @@ const NodeAPI = {
           segmentsCount,
           timePeriod,
         },
-        {
-          deadline: Date.now() + 500,
-        },
+
         (err, data) => {
           if (err || !data) {
             return reject(err);
@@ -114,16 +120,40 @@ const NodeAPI = {
     });
   },
 
+  async GetMerkleProof(
+    host: string,
+    fileKey: string,
+    segmentIndex: number
+  ): Promise<IGetMerkleProofResponse> {
+    const client = this.getClient(host);
+    return new Promise((resolve, reject) => {
+      client.GetIntegrityProof({ fileKey, segmentIndex }, (err, val) => {
+        if (err || !val) {
+          console.warn(err);
+          reject(err);
+
+          return;
+        }
+        resolve({
+          data: val.data,
+          proof: val.proof,
+          root: val.root,
+          segmentCount: val?.SegmentIndex.toInt(),
+          segmentIndex: val?.segmentsCount.toInt(),
+        });
+      });
+    });
+  },
   async ComputeMerkleRootHash(
     filePath: string,
-    _segmentsCount: number,
+    segmentsCount: number,
     progressCallback: (p: number) => void
   ) {
     const fstats = fs.statSync(filePath);
     console.log('Computing hash');
 
     const fileSize = fstats.size;
-    const segmentsCount = Math.ceil(fileSize / (1024 * 1));
+    // const segmentsCount = Math.ceil(fileSize / (1024 * 1));
 
     const lastChunkSize = fileSize % 1024;
 
@@ -139,7 +169,7 @@ const NodeAPI = {
     console.log('Segments: ', segmentsCount);
 
     const f = fs.createReadStream(filePath, {
-      highWaterMark: chunkSize,
+      // highWaterMark: 1024 * 1024 * 1024, // chunkSize
     });
     f.pause();
 
@@ -193,7 +223,7 @@ const NodeAPI = {
     token: string,
     progressCallback: (progress: number) => void,
     onError: (err: Error) => void,
-    onComplete: () => void,
+    onComplete: ({ download_url }: { download_url: string }) => void,
     fileKey: string
   ) {
     const fileSize = fs.statSync(filePath).size;
@@ -220,9 +250,9 @@ const NodeAPI = {
       })
       // eslint-disable-next-line promise/always-return
       .then((r) => {
-        console.log(r.request);
+        console.log(r.data);
         console.log('Upload Complete');
-        onComplete();
+        onComplete({ download_url: r.data.download_url });
       })
       .catch((er) => {
         console.warn(er);
@@ -270,6 +300,7 @@ const NodeAPI = {
         onComplete();
       })
       .catch((er) => {
+        console.log('Download failed');
         console.warn(er);
 
         onError(er);

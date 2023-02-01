@@ -65,6 +65,8 @@ export const ContractAPI = {
       BigInt(data.bidAmount),
       { value: BigInt(wei) }
     );
+    console.log('TX', tx);
+
     return true;
   },
   async getStorageNodesAddress() {

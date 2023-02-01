@@ -81,7 +81,7 @@ export default function Account() {
         variant="link"
         leftIcon={<BiRadar fontSize="1.2em" />}
         size="sm"
-        href={`http://etherscan.io/address/${account.address}`}
+        href={`https://goerli-optimism.etherscan.io/address/${account.address}`}
         as="a"
         target="_blank"
       >
@@ -110,7 +110,7 @@ export default function Account() {
                   userSelect="text"
                 >
                   <Link
-                    href={`http://etherscan.io/address/${account.address}`}
+                    href={`https://goerli-optimism.etherscan.io/address/${account.address}`}
                     target="_blank"
                   >
                     {account.address}
@@ -159,8 +159,8 @@ export default function Account() {
               color="var(--chakra-colors-gray-500)"
               fontSize="1.3em"
             />
-            All your files info is stored in your account file. Export your
-            account often to avoid lost.
+            All your files information is stored on your account file. Export
+            your account often to avoid loss.
           </Tag>
         </Flex>
       </Flex>

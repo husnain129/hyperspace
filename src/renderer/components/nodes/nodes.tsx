@@ -172,7 +172,7 @@ export default function Nodes() {
                   <Link
                     fontFamily="mono"
                     color="blue.600"
-                    href={`https://etherscan.io/address/${l.address}`}
+                    href={`https://goerli-optimism.etherscan.io/address/${l.address}`}
                     target="_blank"
                     rel="noreferrer"
                   >
@@ -186,7 +186,7 @@ export default function Nodes() {
                   <Link
                     fontFamily="mono"
                     color="blue.600"
-                    href={`https://etherscan.io/address/${l.owner}`}
+                    href={`https://goerli-optimism.etherscan.io/address/${l.owner}`}
                     target="_blank"
                     rel="noreferrer"
                   >

@@ -54,6 +54,14 @@ const DB_API = {
   exists() {
     return fs.existsSync(dbFile);
   },
+  async fileExists(fileName: string) {
+    await this.connect();
+    const r = await this.db?.get(
+      'SELECT COUNT(*) AS "exists" FROM files WHERE name = ?',
+      [fileName]
+    );
+    return r.exists > 0;
+  },
 
   async getAccount() {
     if (!this.exists()) throw new Error("database doens't exists");
@@ -85,6 +93,7 @@ const DB_API = {
         sha256: '';
         created_at: string;
         is_encrypted: boolean;
+        download_url: string;
       }>
     >(`SELECT * from files`);
     console.log('>rows');
@@ -108,11 +117,12 @@ const DB_API = {
       timerEnd: r.timer_end,
       timerStart: r.timer_start,
       isEncrypted: !!r.is_encrypted,
+      downloadURL: r.download_url || '',
     }));
   },
   async insertFile(file: IFile) {
     await this.connect();
-
+    console.log(file);
     await this.db!.exec(`CREATE TABLE IF NOT EXISTS files (
       file_key VARCHAR(256) PRIMARY KEY UNIQUE,
       bid varchar(256),
@@ -133,6 +143,7 @@ const DB_API = {
       prove_timeout int(11),
       sha256 VARCHAR(256),
       is_encrypted int(1),
+      download_url VARCHAR(512),
 
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
@@ -142,8 +153,8 @@ const DB_API = {
       file_key,bid,name,contract_address,file_size,
       merkle_root,segments,timer_start,timer_end,
       time_created, last_verified, conclude_timeout,
-      prove_timeout,sha256,is_encrypted
-    ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      prove_timeout,sha256,is_encrypted,download_url
+    ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       file.fileKey,
       file.bid,
       file.name,
@@ -158,7 +169,8 @@ const DB_API = {
       file.concludeTimeoutLength,
       file.proveTimeoutLength,
       file.sha256,
-      file.isEncrypted ? 1 : 0
+      file.isEncrypted ? 1 : 0,
+      file.downloadURL
     );
   },
   async createAccount(account: IAccount) {

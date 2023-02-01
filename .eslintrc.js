@@ -14,6 +14,7 @@ module.exports = {
     'no-console': 'off',
     'promise/always-return': 'off',
     'promise/catch-or-return': 'warn',
+    'react/jsx-curly-brace-presence': 'off',
   },
   parserOptions: {
     ecmaVersion: 2020,

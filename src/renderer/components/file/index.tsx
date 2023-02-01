@@ -16,57 +16,69 @@ import {
   Text,
   Th,
   Thead,
+  Tooltip,
   Tr,
+  useClipboard,
 } from '@chakra-ui/react';
 import { format } from 'date-fns';
 import { FileStatus, IFile } from 'main/IFile';
 import prettyBytes from 'pretty-bytes';
-import { BiDownload, BiStop, BiTrash, BiTrashAlt } from 'react-icons/bi';
+import { useState } from 'react';
 import {
-  BsFile,
-  BsFileBinaryFill,
-  BsFileEarmark,
-  BsFileEarmarkDiffFill,
   BsFileEarmarkFill,
-  BsFileFill,
-  BsFileWordFill,
-  BsFileXFill,
-  BsFillFileEarmarkZipFill,
-  BsStop,
+  BsFileEarmarkLock2Fill,
   BsStopFill,
 } from 'react-icons/bs';
-import { FiFile } from 'react-icons/fi';
 import { HiDownload } from 'react-icons/hi';
-import { MdFilePresent, MdOutlineDownload } from 'react-icons/md';
+import { MdLink, MdLinkOff } from 'react-icons/md';
 import useAccount from 'renderer/hooks/useAccount';
 import useFiles from 'renderer/hooks/useFiles';
-import BladeSpinner from '../blade-spinner/BladeSpinner';
+import FileDetailsDrawer from './FileDetailsDrawer';
 
 const FileTableData = ({
   file,
   onDownloadClick,
   downloading,
   onDelete,
+  onAbortDownload,
+  onSelect,
 }: {
   file: IFile;
   onDownloadClick: () => void;
   downloading?: { progress: number };
   onDelete: () => void;
+  onAbortDownload: () => void;
+  onSelect: () => void;
 }) => {
+  const { onCopy, value, setValue, hasCopied } = useClipboard(
+    `${file.downloadURL}?as=${file.name}`
+  );
+
   const { name } = file;
   const size = prettyBytes(file.fileSize);
   const uploadedAt = format(new Date(file.timerStart * 1000), 'MMM dd, yyyy');
   const lastVerifiedAt = uploadedAt;
+
   return (
     <Tr>
       <Td>
-        <HStack>
-          <BsFileEarmarkFill
-            size="1.2em"
-            color="#616161"
-            style={{ flexShrink: 0 }}
-          />
+        <HStack onClick={onSelect} cursor="pointer">
+          {file.isEncrypted ? (
+            <BsFileEarmarkLock2Fill
+              size="1.2em"
+              color="#616161"
+              style={{ flexShrink: 0 }}
+            />
+          ) : (
+            <BsFileEarmarkFill
+              size="1.2em"
+              color="#616161"
+              style={{ flexShrink: 0 }}
+            />
+          )}
+
           <Text
+            _hover={{ textDecoration: 'underline' }}
             fontSize=".85em"
             fontWeight="semibold"
             color="#616161"
@@ -110,12 +122,14 @@ const FileTableData = ({
           ) : (
             <CircularProgress
               capIsRound
+              isIndeterminate={downloading.progress === 0}
               thickness="6px"
               value={downloading.progress}
               color="primary.400"
               size="32px"
               pos="relative"
               cursor="pointer"
+              onClick={() => onAbortDownload()}
               sx={{
                 '&:hover .stop': {
                   display: 'block !important',
@@ -144,6 +158,45 @@ const FileTableData = ({
               />
             </CircularProgress>
           )}
+          {!file.isEncrypted ? (
+            <Tooltip
+              isOpen={hasCopied}
+              hasArrow
+              placement="top"
+              label="Link Copied!"
+              // bg="gray.300"
+              // color="black"
+            >
+              <IconButton
+                aria-label="copy link"
+                colorScheme="gray"
+                borderRadius="full"
+                border="1px solid"
+                size="sm"
+                borderColor="gray.300"
+                variant="ghost"
+                children={
+                  <MdLink size="1.2em" color="var(--chakra-colors-gray-700)" />
+                }
+                onClick={() => onCopy()}
+              />
+            </Tooltip>
+          ) : (
+            <IconButton
+              aria-label="link disabled"
+              colorScheme="gray"
+              borderRadius="full"
+              border="1px solid"
+              size="sm"
+              borderColor="gray.300"
+              variant="ghost"
+              children={
+                <MdLinkOff size="1.2em" color="var(--chakra-colors-gray-700)" />
+              }
+              isDisabled
+            />
+          )}
+
           {/* <IconButton
             onClick={onDelete}
             aria-label="delete"
@@ -165,10 +218,14 @@ const FileTableData = ({
 const FileContainer = () => {
   const files = useFiles();
   const { account } = useAccount();
+  const [selectedFile, setSelectedFile] = useState(-1);
   const handleDownload = (fileKey: string) => {
     files.downloadFile(fileKey, account.private_key).catch((er) => {
       console.warn(er);
     });
+  };
+  const handleAbortDownload = (fileKey: string) => {
+    files.abortDownload(fileKey);
   };
   const handleDelete = (fileKey: string) => {
     files.downloadFile(fileKey, account.private_key).catch((er) => {
@@ -238,9 +295,17 @@ const FileContainer = () => {
                 .sort((x, y) => y.timerStart - x.timerStart)
                 .map((f, i) => (
                   <FileTableData
+                    onSelect={() =>
+                      setSelectedFile(
+                        files.files.findIndex((ff) => ff.fileKey === f.fileKey)
+                      )
+                    }
                     onDelete={() => handleDelete(f.fileKey)}
                     file={f}
                     key={f.fileKey}
+                    onAbortDownload={() => {
+                      handleAbortDownload(f.fileKey);
+                    }}
                     onDownloadClick={() => handleDownload(f.fileKey)}
                     downloading={
                       f.status === FileStatus.DOWNLOADING
@@ -255,6 +320,12 @@ const FileContainer = () => {
           </Tbody>
         </Table>
       </TableContainer>
+      {selectedFile >= 0 && (
+        <FileDetailsDrawer
+          file={files.files[selectedFile]}
+          onClose={() => setSelectedFile(-1)}
+        />
+      )}
     </Flex>
   );
 };

@@ -6,10 +6,21 @@ import type { Empty as _proto_Empty, Empty__Output as _proto_Empty__Output } fro
 import type { GetStatsResponse as _proto_GetStatsResponse, GetStatsResponse__Output as _proto_GetStatsResponse__Output } from '../proto/GetStatsResponse';
 import type { InitTransactionRequest as _proto_InitTransactionRequest, InitTransactionRequest__Output as _proto_InitTransactionRequest__Output } from '../proto/InitTransactionRequest';
 import type { InitTransactionResponse as _proto_InitTransactionResponse, InitTransactionResponse__Output as _proto_InitTransactionResponse__Output } from '../proto/InitTransactionResponse';
+import type { IntegrityProofRequest as _proto_IntegrityProofRequest, IntegrityProofRequest__Output as _proto_IntegrityProofRequest__Output } from '../proto/IntegrityProofRequest';
+import type { IntegrityProofResponse as _proto_IntegrityProofResponse, IntegrityProofResponse__Output as _proto_IntegrityProofResponse__Output } from '../proto/IntegrityProofResponse';
 import type { PingRequest as _proto_PingRequest, PingRequest__Output as _proto_PingRequest__Output } from '../proto/PingRequest';
 import type { PingResponse as _proto_PingResponse, PingResponse__Output as _proto_PingResponse__Output } from '../proto/PingResponse';
 
 export interface StorageNodeClient extends grpc.Client {
+  GetIntegrityProof(argument: _proto_IntegrityProofRequest, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_proto_IntegrityProofResponse__Output>): grpc.ClientUnaryCall;
+  GetIntegrityProof(argument: _proto_IntegrityProofRequest, metadata: grpc.Metadata, callback: grpc.requestCallback<_proto_IntegrityProofResponse__Output>): grpc.ClientUnaryCall;
+  GetIntegrityProof(argument: _proto_IntegrityProofRequest, options: grpc.CallOptions, callback: grpc.requestCallback<_proto_IntegrityProofResponse__Output>): grpc.ClientUnaryCall;
+  GetIntegrityProof(argument: _proto_IntegrityProofRequest, callback: grpc.requestCallback<_proto_IntegrityProofResponse__Output>): grpc.ClientUnaryCall;
+  getIntegrityProof(argument: _proto_IntegrityProofRequest, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_proto_IntegrityProofResponse__Output>): grpc.ClientUnaryCall;
+  getIntegrityProof(argument: _proto_IntegrityProofRequest, metadata: grpc.Metadata, callback: grpc.requestCallback<_proto_IntegrityProofResponse__Output>): grpc.ClientUnaryCall;
+  getIntegrityProof(argument: _proto_IntegrityProofRequest, options: grpc.CallOptions, callback: grpc.requestCallback<_proto_IntegrityProofResponse__Output>): grpc.ClientUnaryCall;
+  getIntegrityProof(argument: _proto_IntegrityProofRequest, callback: grpc.requestCallback<_proto_IntegrityProofResponse__Output>): grpc.ClientUnaryCall;
+  
   GetStats(argument: _proto_Empty, metadata: grpc.Metadata, options: grpc.CallOptions, callback: grpc.requestCallback<_proto_GetStatsResponse__Output>): grpc.ClientUnaryCall;
   GetStats(argument: _proto_Empty, metadata: grpc.Metadata, callback: grpc.requestCallback<_proto_GetStatsResponse__Output>): grpc.ClientUnaryCall;
   GetStats(argument: _proto_Empty, options: grpc.CallOptions, callback: grpc.requestCallback<_proto_GetStatsResponse__Output>): grpc.ClientUnaryCall;
@@ -40,6 +51,8 @@ export interface StorageNodeClient extends grpc.Client {
 }
 
 export interface StorageNodeHandlers extends grpc.UntypedServiceImplementation {
+  GetIntegrityProof: grpc.handleUnaryCall<_proto_IntegrityProofRequest__Output, _proto_IntegrityProofResponse>;
+  
   GetStats: grpc.handleUnaryCall<_proto_Empty__Output, _proto_GetStatsResponse>;
   
   InitTransaction: grpc.handleUnaryCall<_proto_InitTransactionRequest__Output, _proto_InitTransactionResponse>;
@@ -49,6 +62,7 @@ export interface StorageNodeHandlers extends grpc.UntypedServiceImplementation {
 }
 
 export interface StorageNodeDefinition extends grpc.ServiceDefinition {
+  GetIntegrityProof: MethodDefinition<_proto_IntegrityProofRequest, _proto_IntegrityProofResponse, _proto_IntegrityProofRequest__Output, _proto_IntegrityProofResponse__Output>
   GetStats: MethodDefinition<_proto_Empty, _proto_GetStatsResponse, _proto_Empty__Output, _proto_GetStatsResponse__Output>
   InitTransaction: MethodDefinition<_proto_InitTransactionRequest, _proto_InitTransactionResponse, _proto_InitTransactionRequest__Output, _proto_InitTransactionResponse__Output>
   Ping: MethodDefinition<_proto_PingRequest, _proto_PingResponse, _proto_PingRequest__Output, _proto_PingResponse__Output>

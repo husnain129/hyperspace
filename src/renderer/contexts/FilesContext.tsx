@@ -16,13 +16,17 @@ interface IFilesContext {
   isLoading: boolean;
   uploadFile: (args: UploadFileArgs) => Promise<string>;
   downloadFile: (fileKey: string, decKey: string) => Promise<string>;
+  abortDownload: (fileKey: string) => Promise<void>;
   encryptFile: (
     filePath: string,
     dest: string,
     key: string
   ) => Promise<{ path: string; size: number }>;
 
-  computeMerkleRootHash: (filePath: string) => Promise<string>;
+  computeMerkleRootHash: (
+    filePath: string,
+    segments: number
+  ) => Promise<string>;
 }
 
 export function computeFileKey(
@@ -70,12 +74,12 @@ export default function FilesContextProvider({
   >([]);
   const { account } = useAccount();
 
-  const computeRootHash = async (filePath: string) => {
+  const computeRootHash = async (filePath: string, segmentsCount: number) => {
     const hash: string = await window.electron.ipcRenderer.invoke(
       'node-compute-hash',
       {
         filePath,
-        segmentsCount: 1000,
+        segmentsCount,
       }
     );
     return hash;
@@ -118,9 +122,9 @@ export default function FilesContextProvider({
         });
       console.log('Token:', token);
       const fileKey = computeFileKey(account.address, args.merkleRootHash);
-
+      console.log(`File Key: ${fileKey}`);
       let p = args.filePath.split(/[\\/]/).pop();
-      if (args.encrypted) p = p.slice(0, -4); // remove enc
+      if (args.encrypted) p = p?.slice(0, -4); // remove enc
       setFiles((f) =>
         f.concat([
           {
@@ -141,23 +145,50 @@ export default function FilesContextProvider({
             concludeTimeoutLength: 60 * 60 * 60,
             proveTimeoutLength: 30,
             isEncrypted: args.encrypted,
+            downloadURL: '',
           },
         ])
       );
 
-      await window.electron.ipcRenderer.invoke('node-http-upload', {
-        url: httpURL,
-        filePath: args.filePath,
-        token,
-        fileKey,
-      });
+      const { download_url: downloadURL } =
+        await window.electron.ipcRenderer.invoke('node-http-upload', {
+          url: httpURL,
+          filePath: args.filePath,
+          token,
+          fileKey,
+        });
 
       console.log('Key:', fileKey);
+      console.log('download_url:', downloadURL);
 
       return fileKey;
     },
     [account.address]
   );
+  const abortDownload = useCallback(async (fileKey: string) => {
+    const fIndex = files.findIndex((f) => f.fileKey === fileKey);
+    if (fIndex < 0) {
+      return;
+    }
+    const file = files[fIndex];
+    if (file.status === FileStatus.DOWNLOADING) {
+      const success = await window.electron.ipcRenderer.invoke(
+        'node-http-download-abort',
+        {
+          fileKey,
+        }
+      );
+      if (success) {
+        setFiles((f) =>
+          f.map((fl) =>
+            fl.fileKey !== fileKey
+              ? fl
+              : { ...fl, status: FileStatus.IDLE, progress: 0 }
+          )
+        );
+      }
+    }
+  }, []);
   const downloadFile = useCallback(
     async (fileKey: string, decKey: string): Promise<string> => {
       const fIndex = files.findIndex((f) => f.fileKey === fileKey);
@@ -166,38 +197,48 @@ export default function FilesContextProvider({
       if (file.status !== FileStatus.IDLE) {
         throw new Error('file is busy');
       }
-      console.log('>fetching stats');
-      const storageContract = await window.electron.ipcRenderer.invoke(
-        'node-contract-info',
-        file.storageContractAddress
-      );
-      console.log('>Contract: ', storageContract);
-      let { host }: { host: string } = storageContract;
-      console.log('>URL', host);
-      host = host.replace('8000', '5555');
-      const { dest } = await window.electron.ipcRenderer.invoke(
-        'node-http-download',
-        {
-          url: `${host}/get/${fileKey}`,
-          token: '',
-          name: file.name,
-          fileKey,
-          decrypt: file.isEncrypted
-            ? {
-                key: decKey,
-              }
-            : undefined,
-        }
-      );
-      console.log('>DEST:', dest);
+      try {
+        setFiles((f) =>
+          f.map((fl) =>
+            fl.fileKey !== fileKey
+              ? fl
+              : { ...fl, status: FileStatus.DOWNLOADING, progress: 0 }
+          )
+        );
 
-      setFiles((f) =>
-        f.map((fl) =>
-          fl.fileKey !== fileKey
-            ? fl
-            : { ...fl, status: FileStatus.DOWNLOADING, progress: 0 }
-        )
-      );
+        // console.log('>fetching stats');
+        // const storageContract = await window.electron.ipcRenderer.invoke(
+        //   'node-contract-info',
+        //   file.storageContractAddress
+        // );
+        // console.log('>Contract: ', storageContract);
+        // let { host }: { host: string } = storageContract;
+        // console.log('>URL', host);
+        // host = host.replace('8000', '5555');
+        const { dest } = await window.electron.ipcRenderer.invoke(
+          'node-http-download',
+          {
+            url: file.downloadURL,
+            token: '',
+            name: file.name,
+            fileKey,
+            decrypt: file.isEncrypted
+              ? {
+                  key: decKey,
+                }
+              : undefined,
+          }
+        );
+        console.log('>DEST:', dest);
+      } catch (er) {
+        setFiles((f) =>
+          f.map((fl) =>
+            fl.fileKey !== fileKey
+              ? fl
+              : { ...fl, status: FileStatus.IDLE, progress: 0 }
+          )
+        );
+      }
       return fileKey;
     },
 
@@ -243,13 +284,22 @@ export default function FilesContextProvider({
         if (operation === 'UPLOAD') {
           // upload failed
           setFiles((_files) => _files.filter((f, i) => f.fileKey !== fileKey));
+        } else if (operation === 'DOWNLOAD') {
+          toast.error('Something went wrong. Please try again.');
+          setFiles((f) =>
+            f.map((fl) =>
+              fl.fileKey !== fileKey
+                ? fl
+                : { ...fl, status: FileStatus.IDLE, progress: 0 }
+            )
+          );
         }
       }
     );
 
     const unsubUploadComplete = window.electron.ipcRenderer.on(
       'file-complete',
-      ({ fileKey, ...args }: any) => {
+      ({ fileKey, download_url, ...args }: any) => {
         if (fileKey) {
           // conclude file
           const fileIndex = files.findIndex((f) => f.fileKey === fileKey);
@@ -261,6 +311,7 @@ export default function FilesContextProvider({
 
           if (file.status === FileStatus.UPLOADING) {
             const params: IPCcontractConcludeTx = {
+              fileKey: file.fileKey,
               weiValue: file.bid,
               bidAmount: file.bid,
               fileSize: file.fileSize,
@@ -274,44 +325,59 @@ export default function FilesContextProvider({
               timerStart: file.timerStart,
               userAddress: account.address,
             };
+            console.log('Setting download URL: ', download_url);
 
             setFiles((_files) =>
               _files.map((f, i) =>
-                i !== fileIndex ? f : { ...f, status: FileStatus.CONCLUDING }
+                i !== fileIndex
+                  ? f
+                  : {
+                      ...f,
+                      downloadURL: download_url,
+                      status: FileStatus.CONCLUDING,
+                    }
               )
             );
-            window.electron.ipcRenderer
-              .invoke('contract-conclude-tx', params)
-              .then(() => {
-                console.log('>Concluded file: ', fileKey);
+            setTimeout(() => {
+              // settle delay
+              window.electron.ipcRenderer
+                .invoke('contract-conclude-tx', params)
+                .then(() => {
+                  console.log('>Concluded file: ', fileKey);
 
-                setFiles((_files) =>
-                  _files.map((f, i) =>
-                    i !== fileIndex ? f : { ...f, status: FileStatus.IDLE }
-                  )
-                );
-                window.electron.ipcRenderer
-                  .invoke('db-insert-file', file)
-                  .then(() => {
-                    console.log('insert complete');
-                  })
-                  .catch((er) => {
-                    console.log('insertion error');
-                    console.warn(er);
-                    window.electron.ipcRenderer.sendMessage('file-error', [
-                      {
-                        fileKey,
-                        operation: 'UPLOAD',
-                      },
-                    ]);
-                  });
-              })
+                  setFiles((_files) =>
+                    _files.map((f, i) =>
+                      i !== fileIndex ? f : { ...f, status: FileStatus.IDLE }
+                    )
+                  );
+                  window.electron.ipcRenderer
+                    .invoke('db-insert-file', {
+                      ...file,
+                      downloadURL: download_url,
+                    })
+                    .then(() => {
+                      console.log('insert complete');
+                    })
+                    .catch((er) => {
+                      console.log('insertion error');
+                      console.warn(er);
+                      window.electron.ipcRenderer.sendMessage('file-error', [
+                        {
+                          fileKey,
+                          operation: 'UPLOAD',
+                        },
+                      ]);
+                    });
+                })
 
-              .catch((er) => {
-                setFiles((_files) => _files.filter((f, i) => i !== fileIndex));
-
-                console.warn(er);
-              });
+                .catch((er) => {
+                  setFiles((_files) =>
+                    _files.filter((f, i) => i !== fileIndex)
+                  );
+                  toast.error('Failed to upload. Please try again');
+                  console.warn(er);
+                });
+            }, 2000);
           } else if (file.status === FileStatus.DOWNLOADING) {
             setTimeout(() => {
               // delay for humans -_-
@@ -377,6 +443,7 @@ export default function FilesContextProvider({
         uploadFile,
         computeMerkleRootHash: computeRootHash,
         downloadFile,
+        abortDownload,
         encryptFile,
       }}
     >

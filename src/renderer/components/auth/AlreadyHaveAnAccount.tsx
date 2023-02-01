@@ -102,7 +102,7 @@ const AlreadyHaveAnAccount = ({
             variant="link"
             leftIcon={<BiRadar fontSize="1.2em" />}
             size="sm"
-            href={`http://etherscan.io/address/${account.address}`}
+            href={`https://goerli-optimism.etherscan.io/address/${account.address}`}
             as="a"
             target="_blank"
           >
@@ -130,7 +130,7 @@ const AlreadyHaveAnAccount = ({
                       userSelect="text"
                     >
                       <Link
-                        href={`http://etherscan.io/address/${account.address}`}
+                        href={`https://goerli-optimism.etherscan.io/address/${account.address}`}
                         target="_blank"
                       >
                         {account.address}

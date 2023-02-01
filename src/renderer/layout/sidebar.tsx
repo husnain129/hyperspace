@@ -41,7 +41,7 @@ const Sidebar = ({ activeNavigation }: { activeNavigation: NAVIGATION }) => {
   const [balance, setBalance] = useState('');
   const getAccountBalance = useCallback(() => {
     setBlncLoading(true);
-    setTimeout(async () => {
+    (async () => {
       try {
         const blnc = await window.electron.ipcRenderer.invoke(
           'get-balance',
@@ -49,7 +49,7 @@ const Sidebar = ({ activeNavigation }: { activeNavigation: NAVIGATION }) => {
         );
 
         const eth = Intl.NumberFormat('en', {
-          maximumFractionDigits: 4,
+          maximumFractionDigits: 5,
           minimumFractionDigits: 2,
         }).format(Number(ethers.utils.formatEther(blnc)));
 
@@ -59,7 +59,7 @@ const Sidebar = ({ activeNavigation }: { activeNavigation: NAVIGATION }) => {
       } finally {
         setBlncLoading(false);
       }
-    }, 1000);
+    })();
   }, [account.address]);
 
   useEffect(() => {

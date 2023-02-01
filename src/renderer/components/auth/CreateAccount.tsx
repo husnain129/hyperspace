@@ -22,11 +22,12 @@ const CreateAccount = (props: {
   const navigate = useNavigate();
   const [name, setName] = useState('');
   const [step, setStep] = useState<'NAME' | 'KEY'>('NAME');
-
+  const [keyValid, setKeyValid] = useState(false);
   const [key, setKey] = useState('');
   const handleGenerateNew = () => {
     const w = ethers.Wallet.createRandom();
     setKey(w.privateKey);
+    setKeyValid(true);
   };
 
   const [sumbitting, setSubmitting] = useState(false);
@@ -59,6 +60,19 @@ const CreateAccount = (props: {
     }
   };
 
+  const verifyKey = (pkey: string) => {
+    if (!(pkey.length === 66 || pkey.length === 64) || name.length < 3) {
+      return false;
+    }
+    let k = pkey;
+    if (pkey.startsWith('0x')) {
+      k = k.slice(2);
+    }
+    if (!k.match(/[0-9A-F]/gi)) {
+      return false;
+    }
+    return true;
+  };
   return (
     <VStack
       w="full"
@@ -87,6 +101,7 @@ const CreateAccount = (props: {
               onChange={(e) => setName(e.target.value)}
             />
             <Button
+              isDisabled={name.length < 3}
               onClick={() => setStep('KEY')}
               colorScheme="primary"
               rightIcon={<BsChevronRight fontSize="0.8em" strokeWidth="1px" />}
@@ -104,7 +119,7 @@ const CreateAccount = (props: {
           justify="center"
           flex={1}
           spacing={3}
-          // marginTop="-4rem"
+          marginTop="4rem"
         >
           <Text fontSize="1.5em" fontWeight="black">
             Your account private key
@@ -116,12 +131,16 @@ const CreateAccount = (props: {
           <VStack gap="1em" w="full" alignItems="flex-start">
             <Textarea
               autoFocus
-              placeholder="Enter your private key"
-              onChange={(e) => setKey(e.target.value)}
+              placeholder="Enter your private key in hex format"
+              onChange={(e) => {
+                setKey(e.target.value);
+                setKeyValid(verifyKey(e.target.value));
+              }}
               value={key}
               fontFamily="mono"
               fontSize="0.9em"
             />
+
             <HStack gap="1em">
               <Button
                 onClick={() => handleSubmit()}
@@ -130,6 +149,7 @@ const CreateAccount = (props: {
                 rightIcon={
                   <BsChevronRight fontSize="0.8em" strokeWidth="1px" />
                 }
+                isDisabled={!keyValid}
                 isLoading={sumbitting}
               >
                 Next
@@ -138,6 +158,11 @@ const CreateAccount = (props: {
                 Generate New
               </Button>
             </HStack>
+            <Text fontSize="sm" fontWeight="500" color="red.500" minH="1em">
+              {key.length > 0 && !keyValid
+                ? 'Private key is not valid. Only hexadecimal characters are allowed.'
+                : ''}
+            </Text>
           </VStack>
         </VStack>
       )}

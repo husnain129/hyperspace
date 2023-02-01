@@ -13,6 +13,8 @@ export interface ProtoGrpcType {
     GetStatsResponse: MessageTypeDefinition
     InitTransactionRequest: MessageTypeDefinition
     InitTransactionResponse: MessageTypeDefinition
+    IntegrityProofRequest: MessageTypeDefinition
+    IntegrityProofResponse: MessageTypeDefinition
     PingRequest: MessageTypeDefinition
     PingResponse: MessageTypeDefinition
     StorageNode: SubtypeConstructor<typeof grpc.Client, _proto_StorageNodeClient> & { service: _proto_StorageNodeDefinition }
