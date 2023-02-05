@@ -19,7 +19,7 @@ import {
   VStack,
 } from '@chakra-ui/react';
 import { format } from 'date-fns';
-import { formatEther } from 'ethers/lib/utils';
+import { formatEther, hexlify } from 'ethers/lib/utils';
 import { IFile } from 'main/IFile';
 import { IGetMerkleProofResponse } from 'node-api/node-api';
 import prettyBytes from 'pretty-bytes';
@@ -91,8 +91,9 @@ export default function FileDetailsDrawer({
 
         return;
       }
-      // console.log(Buffer.from(res.result?.root as Uint8Array).toString('hex'));
-      if (res.result?.root.toString('hex') !== file.fileKey) {
+      const k = hexlify(res.result?.root as any).slice(2);
+      console.log(k);
+      if (k !== file.fileMerkleRootHash) {
         toast.error('Integerity Failed');
         return;
       }
@@ -237,7 +238,7 @@ export default function FileDetailsDrawer({
                 // whiteSpace="pre-wrap"
                 wordBreak="break-all"
               >
-                {file.fileKey}
+                {file.fileMerkleRootHash}
               </Text>
 
               {integrityStatus === 'LOADING' ? (

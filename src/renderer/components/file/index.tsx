@@ -23,7 +23,7 @@ import {
 import { format } from 'date-fns';
 import { FileStatus, IFile } from 'main/IFile';
 import prettyBytes from 'pretty-bytes';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   BsFileEarmarkFill,
   BsFileEarmarkLock2Fill,
@@ -54,6 +54,9 @@ const FileTableData = ({
     `${file.downloadURL}?as=${file.name}`
   );
 
+  useEffect(() => {
+    setValue(`${file.downloadURL}?as=${file.name}`);
+  }, [file, setValue]);
   const { name } = file;
   const size = prettyBytes(file.fileSize);
   const uploadedAt = format(new Date(file.timerStart * 1000), 'MMM dd, yyyy');
@@ -100,11 +103,11 @@ const FileTableData = ({
           {uploadedAt}
         </Text>
       </Td>
-      <Td>
+      {/* <Td>
         <Text fontSize=".85em" color="#949494" fontWeight="500">
           {lastVerifiedAt}
         </Text>
-      </Td>
+      </Td> */}
       <Td>
         <HStack>
           {!downloading ? (
@@ -266,9 +269,9 @@ const FileContainer = () => {
               <Th textTransform="none" color="gray.500">
                 Upload On
               </Th>
-              <Th textTransform="none" color="gray.500">
+              {/* <Th textTransform="none" color="gray.500">
                 Last Verified
-              </Th>
+              </Th> */}
               <Th textTransform="none" color="gray.500">
                 Actions
               </Th>

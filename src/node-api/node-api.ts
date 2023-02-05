@@ -29,6 +29,7 @@ export interface IGetMerkleProofResponse {
   root: Buffer;
   proof: Buffer[];
   data: Buffer;
+  directions: number[];
 }
 const pkgDef = protoLoader.loadSync(protoFile);
 
@@ -138,6 +139,7 @@ const NodeAPI = {
           data: val.data,
           proof: val.proof,
           root: val.root,
+          directions: val.directions,
           segmentCount: val?.SegmentIndex.toInt(),
           segmentIndex: val?.segmentsCount.toInt(),
         });

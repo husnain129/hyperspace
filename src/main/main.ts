@@ -28,14 +28,15 @@ import { pipeline } from 'stream/promises';
 import { randomBytes, createCipheriv, createDecipheriv } from 'crypto';
 import { promisify } from 'util';
 import { sha256 } from 'ethers/lib/utils';
+import sha256File from 'sha256-file';
+import MerkleTree from 'merkletreejs';
 import NodeAPI, { IGetMerkleProofResponse } from '../node-api/node-api';
 import { ContractAPI } from './contract-api';
 import DB_API, { IAccount, LoadAccountInfoFromFile } from './db-api';
 import MenuBuilder from './menu';
 
 import { resolveHtmlPath } from './util';
-import MerkleTree from 'merkletreejs';
-import { merkleVerify } from './merkle-util';
+import { generateMerkleRootFromMerkleTreeDir } from './merkle-util';
 
 export const globalIV = 'a0d336ccd2aee9a6';
 
@@ -182,7 +183,7 @@ ipcMain.handle('node-http-download-abort', (event, { fileKey }) => {
 
 ipcMain.handle(
   'node-http-download',
-  (event, { url, token, fileKey, name, decrypt }) => {
+  (event, { url, token, fileKey, name, decrypt, sha256: fileSha256 }) => {
     const dest = path.join(
       process.env.HOME || process.env.USERPROFILE || './',
       'downloads/',
@@ -206,10 +207,38 @@ ipcMain.handle(
       });
     };
     const onComplete = () => {
-      if (decrypt && decrypt.key) {
-        const encKey = sha256(decrypt.key).slice(2).slice(32);
+      if (fileSha256) {
+        const s = sha256File(dest);
+        console.log('Integrity : (found,required)', s, fileSha256);
+        if (s !== fileSha256) {
+          console.log(
+            'Integrity check failed: (found,required)',
+            s,
+            fileSha256
+          );
+          mainWindow?.webContents.send('file-error', {
+            fileKey,
+            name: 'Integrity Failed',
+            msg: 'File data is corrrupted. Please try downloading.',
+            operation: 'DOWNLOAD',
+          });
+          return;
+        }
+      }
 
-        const iv = globalIV;
+      if (decrypt && decrypt.key) {
+        const encKey = Buffer.from(
+          sha256(Buffer.from(decrypt.key.slice(2), 'utf-8'))
+            .slice(2)
+            .substring(0, 32),
+          'utf-8'
+        );
+        // console.log('ENC');
+        // console.log(sha256(key));
+        // console.log(encKey);
+
+        const iv = Buffer.from(globalIV, 'utf-8');
+
         const nPath = dest.concat('.dec');
         pipeline(
           createReadStream(dest),
@@ -382,13 +411,18 @@ ipcMain.handle('remove-account', async (event) => {
   if (id !== 1) {
     return false;
   }
-  fs.rmSync(path.join(getAssetPath(), 'account.dat'));
+  try {
+    await DB_API.disconnect();
+  } catch (er) {
+    console.warn(er);
+  }
+  fs.rmSync(path.join(getAssetPath(), 'account.db'));
   return true;
 });
 
 ipcMain.handle('browse-load-account', async (event) => {
   const f = dialog.showOpenDialogSync(mainWindow!, {
-    filters: [{ name: 'Hyperspace Account', extensions: ['hyperspace'] }],
+    filters: [{ name: 'Hyperspace Account', extensions: ['db'] }],
   });
   if (!f || !f[0]) return null;
 
@@ -396,7 +430,7 @@ ipcMain.handle('browse-load-account', async (event) => {
 });
 
 ipcMain.handle('load-account-from-file', async (event, file) => {
-  const dest = path.join(getAssetPath(), 'account.dat');
+  const dest = path.join(getAssetPath(), 'account.db');
 
   if (!fs.existsSync(file)) throw new Error("file doesn't exists");
   if (fs.existsSync(dest)) {
@@ -414,9 +448,10 @@ ipcMain.handle('export-account', async (event, prefix) => {
   if (!dir || !dir[0]) return;
   const dest = path.join(
     dir[0],
-    `${prefix}-account-${format(new Date(), 'dd-mm-yyyy-hh-mm-ss')}.hyperspace`
+    `${prefix}.db`
+    // `${prefix}-account-${format(new Date(), 'dd-mm-yyyy-hh-mm-ss')}.db`
   );
-  fs.copyFileSync(getAssetPath('account.dat'), dest);
+  fs.copyFileSync(getAssetPath('account.db'), dest);
 
   shell.showItemInFolder(dest);
 });
@@ -453,7 +488,14 @@ ipcMain.handle('browse-file', async (event) => {
     return null;
   }
   const stats = fs.statSync(selectedPath[0]);
-  return { path: selectedPath[0], size: stats.size, name, ext };
+  const fileSha256 = sha256File(selectedPath[0]);
+  return {
+    path: selectedPath[0],
+    size: stats.size,
+    name,
+    ext,
+    sha256: fileSha256,
+  };
 });
 ipcMain.handle('get-nodes', async (event, arg) => {
   console.log('Handling get-nodes');
@@ -478,12 +520,11 @@ ipcMain.handle(
         segmentIndex
       );
       console.log(proofResult.root);
-      const res = merkleVerify(
+      const res = generateMerkleRootFromMerkleTreeDir(
         proofResult.proof,
-        proofResult.root,
-        proofResult.data,
-        segmentIndex
+        proofResult.directions
       );
+      console.log('root:', root);
       console.log('VERI:', res);
       return { result: proofResult, error: null };
     } catch (er: any) {
@@ -509,12 +550,19 @@ ipcMain.handle('delete-file', async (event, filePath) => {
 });
 
 ipcMain.handle('encrypt-file', async (event, { filePath, dest, key }) => {
-  const encKey = sha256(key).slice(2).slice(32);
-  console.log('ENC');
-  console.log(sha256(key));
-  console.log(encKey);
+  // eslint-disable-next-line no-param-reassign
 
-  const iv = globalIV;
+  const encKey = Buffer.from(
+    sha256(Buffer.from(key.slice(2), 'utf-8'))
+      .slice(2)
+      .substring(0, 32),
+    'utf-8'
+  );
+  // console.log('ENC');
+  // console.log(sha256(key));
+  // console.log(encKey);
+
+  const iv = Buffer.from(globalIV, 'utf-8');
 
   return new Promise((resolve, reject) => {
     pipeline(
@@ -524,7 +572,11 @@ ipcMain.handle('encrypt-file', async (event, { filePath, dest, key }) => {
     )
       .then(() => {
         const stats = fs.statSync(dest);
-        resolve({ path: dest, size: stats.size });
+
+        const sha = sha256File(dest);
+        console.log('Sha256 of file');
+        console.log(sha);
+        resolve({ path: dest, size: stats.size, sha256: sha });
       })
       .catch((er) => reject(er?.message || 'failed to encrypt'));
   });

@@ -45,6 +45,7 @@ export default function Account() {
     const r = await window.electron.ipcRenderer.invoke('remove-account');
     if (r) {
       setAccount(null as any);
+
       navigate('/auth');
     }
   };

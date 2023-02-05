@@ -5,7 +5,7 @@ import path from 'path';
 import fs from 'fs';
 import { FileStatus, IFile } from './IFile';
 
-const dbFile = path.join(__dirname, '../../assets', 'account.dat');
+const dbFile = path.join(__dirname, '../../assets', 'account.db');
 
 export interface IAccount {
   name: string;
@@ -47,6 +47,12 @@ const DB_API = {
     });
     return this.db;
   },
+  async disconnect() {
+    if (this.db != null && fs.existsSync(dbFile)) {
+      this.db.close();
+      this.db = null;
+    }
+  },
   /**
    *
    * @returns True if database exists, false otherwise
@@ -74,6 +80,31 @@ const DB_API = {
   },
   async getAllFiles(): Promise<IFile[]> {
     await this.connect();
+
+    await this.db!.exec(`CREATE TABLE IF NOT EXISTS files (
+      file_key VARCHAR(256) PRIMARY KEY UNIQUE,
+      bid varchar(256),
+
+      name VARCHAR(1024),
+      contract_address VARCHAR(256),
+      file_size int(11),
+      merkle_root VARCHAR(256),
+      segments int(11),
+
+      timer_start int(11),
+      timer_end int(11),
+
+      time_created int(11),
+      last_verified int(11),
+
+      conclude_timeout int(11),
+      prove_timeout int(11),
+      sha256 VARCHAR(256),
+      is_encrypted int(1),
+      download_url VARCHAR(512),
+
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`);
 
     const rows = await this.db!.all<
       Array<{
@@ -121,8 +152,10 @@ const DB_API = {
     }));
   },
   async insertFile(file: IFile) {
+    console.log('insert file');
     await this.connect();
     console.log(file);
+
     await this.db!.exec(`CREATE TABLE IF NOT EXISTS files (
       file_key VARCHAR(256) PRIMARY KEY UNIQUE,
       bid varchar(256),

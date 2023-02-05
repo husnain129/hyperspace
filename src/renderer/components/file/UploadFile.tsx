@@ -76,6 +76,7 @@ const UploadFile = (props: {
   ext: string;
   size: number;
   path: string;
+  sha256: string;
   onClose: () => void;
 }) => {
   const [loading, setLoading] = useState(false);
@@ -211,6 +212,7 @@ const UploadFile = (props: {
 
   const [filePath, setFilePath] = useState(props.path);
   const [fileSize, setFileSize] = useState(props.size);
+  const [fileSha256, setFileSha256] = useState(props.sha256);
 
   const getRecommendation = useCallback((node: IList) => {
     if (node.latency < 500) {
@@ -230,6 +232,7 @@ const UploadFile = (props: {
         const res = await encryptFile(props.path, newPath, account.private_key);
         setFilePath(newPath);
         setFileSize(res.size);
+        setFileSha256(res.sha256);
         setStage('NODE_SELECTION');
       } catch (er) {
         setStage('DURATION');
@@ -335,6 +338,7 @@ const UploadFile = (props: {
         merkleRootHash: hash,
         storageNodeAddress: node.address,
         encrypted: useEncryption,
+        sha256: fileSha256,
       });
 
       console.log('Got FileKey', fk);

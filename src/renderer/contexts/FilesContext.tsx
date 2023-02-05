@@ -17,11 +17,12 @@ interface IFilesContext {
   uploadFile: (args: UploadFileArgs) => Promise<string>;
   downloadFile: (fileKey: string, decKey: string) => Promise<string>;
   abortDownload: (fileKey: string) => Promise<void>;
+  reloadFiles: () => void;
   encryptFile: (
     filePath: string,
     dest: string,
     key: string
-  ) => Promise<{ path: string; size: number }>;
+  ) => Promise<{ path: string; size: number; sha256: string }>;
 
   computeMerkleRootHash: (
     filePath: string,
@@ -55,6 +56,7 @@ interface UploadFileArgs {
   merkleRootHash: string;
   storageNodeAddress: string;
   encrypted: boolean;
+  sha256: string;
 }
 export interface UploadFileCallbacks {
   onUploadProgress: (p: number) => void;
@@ -90,7 +92,7 @@ export default function FilesContextProvider({
       key,
       dest,
     });
-    return { path: res.path, size: res.size };
+    return { path: res.path, size: res.size, sha256: res.sha256 };
   };
 
   /**
@@ -135,7 +137,7 @@ export default function FilesContextProvider({
             fileMerkleRootHash: args.merkleRootHash,
             lastVerified: 0,
             progress: 0,
-            sha256: '',
+            sha256: args.sha256,
             storageContractAddress: args.storageNodeAddress,
             timeCreated: Math.floor(Date.now() / 1000),
             segmentsCount: args.segmentsCount,
@@ -222,6 +224,7 @@ export default function FilesContextProvider({
             token: '',
             name: file.name,
             fileKey,
+            sha256: file.sha256,
             decrypt: file.isEncrypted
               ? {
                   key: decKey,
@@ -244,15 +247,17 @@ export default function FilesContextProvider({
 
     [files]
   );
-  useEffect(() => {
+
+  const reloadFiles = useCallback(() => {
+    console.log('Getting files');
     setIsLoading(false);
 
     window.electron.ipcRenderer
       .invoke('get-all-files')
       .then((f: IFile[]) => {
         setFiles(f);
-        console.log('>Files');
-        console.log(f);
+        // console.log('>Files');
+        // console.log(f);
       })
       .catch((er) => {
         console.warn('failed to get files');
@@ -262,6 +267,10 @@ export default function FilesContextProvider({
         setIsLoading(false);
       });
   }, []);
+
+  useEffect(() => {
+    reloadFiles();
+  }, [reloadFiles, account]);
 
   useEffect(() => {
     const unsubProgress = window.electron.ipcRenderer.on(
@@ -445,6 +454,7 @@ export default function FilesContextProvider({
         downloadFile,
         abortDownload,
         encryptFile,
+        reloadFiles,
       }}
     >
       {children}

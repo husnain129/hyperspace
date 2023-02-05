@@ -132,6 +132,7 @@
     "react-hot-toast": "^2.4.0",
     "react-icons": "^4.6.0",
     "react-router-dom": "^6.3.0",
+    "sha256-file": "^1.0.0",
     "sqlite": "^4.1.2",
     "sqlite3": "^5.1.2"
   },
@@ -147,6 +148,7 @@
     "@types/react": "^18.0.17",
     "@types/react-dom": "^18.0.6",
     "@types/react-test-renderer": "^18.0.0",
+    "@types/sha256-file": "^1.0.1",
     "@types/terser-webpack-plugin": "^5.0.4",
     "@types/webpack-bundle-analyzer": "^4.4.2",
     "@typescript-eslint/eslint-plugin": "^5.33.1",
